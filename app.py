@@ -105,6 +105,7 @@ def clean_rating(value):
 
 def get_products(store, db_name, table_name, current_time, prefix, item_count):
     get_records(db_name, table_name, store, current_time, prefix)
+    return "success"
 
 def clean_rating_count(value):
     """Convert rating count from string to an integer."""
@@ -239,36 +240,46 @@ def submit_products():
 
 @app.route('/get_products', methods=['GET'])
 def get_products_api():
-    store = request.args.get("store", "").strip()
-    item_count = int(request.args.get("item_count", "").strip())
+    try:
+        store = request.args.get("store", "").strip()
+        item_count = int(request.args.get("item_count", "").strip())
 
-    titleData = ["id","Store page link", "Product item page link", "Platform", "Store", "Product_description", "Product Name", "Units/Counts", "Price", "image_file_names", "Image_Link", "Store Rating", "Store Review number", "Product Rating", "Product Review number"]
-    widths = [10,50,50,60,45,70,35,25,20,130,130,30,30,30,30,60]
-    style = xlwt.easyxf('font: bold 1; align: horiz center')
-    
-    if(not os.path.isdir("products")):
-        os.mkdir("products")
+        if not store:
+            return jsonify({"error": "Store parameter is required"}), 400
 
-    now = datetime.now()
-    current_time = now.strftime("%m_%d_%Y_%H_%M_%S")
-    prefix = now.strftime("%Y%m%d%H%M%S%f_")
-    os.mkdir("products/"+current_time+"_"+store)
-    os.mkdir("products/"+current_time+"_"+store+"/images")
+        titleData = ["id","Store page link", "Product item page link", "Platform", "Store", "Product_description", "Product Name", "Units/Counts", "Price", "image_file_names", "Image_Link", "Store Rating", "Store Review number", "Product Rating", "Product Review number"]
+        widths = [10,50,50,60,45,70,35,25,20,130,130,30,30,30,30,60]
+        style = xlwt.easyxf('font: bold 1; align: horiz center')
+        
+        if(not os.path.isdir("products")):
+            os.mkdir("products")
 
-    db_name = "product_data.db"
-    table_name = f"search_{current_time}_{store.replace(' ', '_')}"
-    
-    workbook = xlwt.Workbook()
-    sheet = workbook.add_sheet('Sheet1')
-    
-    for col_index, value in enumerate(titleData):
-        first_col = sheet.col(col_index)
-        first_col.width = 256 * widths[col_index]  # 20 characters wide
-        sheet.write(0, col_index, value, style)
-    
-    create_database_table(db_name, table_name)
-    get_products(store=store, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix, item_count=item_count)
-    return jsonify({"response": []})
+        now = datetime.now()
+        current_time = now.strftime("%m_%d_%Y_%H_%M_%S")
+        prefix = now.strftime("%Y%m%d%H%M%S%f_")
+
+        db_name = "product_data.db"
+        table_name = f"search_{current_time}_{store.replace(' ', '_')}"
+        
+        workbook = xlwt.Workbook()
+        sheet = workbook.add_sheet('Sheet1')
+        
+        for col_index, value in enumerate(titleData):
+            first_col = sheet.col(col_index)
+            first_col.width = 256 * widths[col_index]  # 20 characters wide
+            sheet.write(0, col_index, value, style)
+        
+        create_database_table(db_name, table_name)
+        result = get_products(store=store, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix, item_count=item_count)
+        
+        if result != "success":
+            return jsonify({"error": "Failed to fetch products"}), 500
+
+        return jsonify({"message": "Products fetched successfully"})
+
+    except Exception as e:
+        print(f"Error in get_products_api: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     db_name = "product_data.db"

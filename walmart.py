@@ -246,41 +246,39 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
     return products
 
 def get_records(db_name, table_name, store, current_time, prefix):
-    options = uc.ChromeOptions()
-    # options.add_argument("--headless=new")  # Enable headless mode
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--start-maximized")  # Debugging support
-    driver = uc.Chrome(options=options)
-    titleData = ["id","Store page link", "Product item page link", "Store_name", "Category", "Product_description", "Product Name", "Weight/Quantity", "Units/Counts", "Price", "image_file_names", "Image_Link", "Store Rating", "Store Review number", "Product Rating", "Product Review number", "Address", "Phone number", "Latitude", "Longitude", "Description Detail"]
-    widths = [10,50,50,60,45,70,35,25,25,20,130,130,30,30,30,30,60,50,60,60,80]
-    style = xlwt.easyxf('font: bold 1; align: horiz center')
-    
-    if(not os.path.isdir("products")):
-        os.mkdir("products")
-
-    os.mkdir("products/"+current_time)
-    os.mkdir("products/"+current_time+"/images")
-    
-    workbook = xlwt.Workbook()
-    sheet = workbook.add_sheet('Sheet1')
-    
-    for col_index, value in enumerate(titleData):
-        first_col = sheet.col(col_index)
-        first_col.width = 256 * widths[col_index]  # 20 characters wide
-        sheet.write(0, col_index, value, style)
-    
-    records = get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
+    try:
+        options = uc.ChromeOptions()
+        # options.add_argument("--headless=new")  # Enable headless mode
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--start-maximized")  # Debugging support
+        driver = uc.Chrome(options=options)
         
-    for row_index, row in enumerate(records):
-        for col_index, value in enumerate(row):
-            sheet.write(row_index+1, col_index, value)
-
-    # Save the workbook
-    workbook.save("products/"+current_time+"_"+store+"/products.xls")
+        # Create directories if they don't exist
+        if not os.path.isdir("products"):
+            os.mkdir("products")
+        if not os.path.isdir(f"products/{current_time}"):
+            os.mkdir(f"products/{current_time}")
+        if not os.path.isdir(f"products/{current_time}/images"):
+            os.mkdir(f"products/{current_time}/images")
+            
+        try:
+            records = get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
+            return records
+        except Exception as e:
+            print(f"Error in get_product_list: {str(e)}")
+            return []
+        finally:
+            try:
+                driver.quit()
+            except:
+                pass
+    except Exception as e:
+        print(f"Error in get_records: {str(e)}")
+        return []
 
 
 
