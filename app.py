@@ -122,6 +122,14 @@ def clean_rating_count(value):
     except ValueError:
         return 0  # Return 0 if conversion fails
 
+def sanitize_table_name(name):
+    # Replace any non-alphanumeric characters (except underscores) with underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    # Ensure the name starts with a letter
+    if not sanitized[0].isalpha():
+        sanitized = 'table_' + sanitized
+    return sanitized
+
 @app.route('/')
 def index():
     db_name = "product_data.db"
@@ -144,57 +152,84 @@ def index():
 
 @app.route('/products/<table_name>')
 def get_products_by_table(table_name):
-    # Pagination parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = 12  # Number of products per page
-    db_name = "product_data.db"
+    try:
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 12  # Number of products per page
+        db_name = "product_data.db"
 
-    def get_table_names(db_name):
-        conn = sqlite3.connect(db_name)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        conn.close()
-        return [table[0] for table in tables]
-    
-    # Function to fetch product data from a specific table with pagination
-    def get_products_from_table(db_name, table_name, page, per_page):
-        conn = sqlite3.connect(db_name)
-        cursor = conn.cursor()
-        offset = (page - 1) * per_page  # Calculate the offset for pagination
+        def get_table_names(db_name):
+            conn = sqlite3.connect(db_name)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
+            conn.close()
+            return [table[0] for table in tables]
         
-        cursor.execute(f"""
-            SELECT * 
-            FROM {table_name}
-            WHERE price IS NOT NULL AND price != ''
-            ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
-            LIMIT {per_page} OFFSET {offset}
-        """)
-        products = cursor.fetchall()
+        # Function to fetch product data from a specific table with pagination
+        def get_products_from_table(db_name, table_name, page, per_page):
+            conn = sqlite3.connect(db_name)
+            cursor = conn.cursor()
+            
+            # First check if table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+            if not cursor.fetchone():
+                conn.close()
+                return None
+                
+            offset = (page - 1) * per_page  # Calculate the offset for pagination
+            
+            cursor.execute(f"""
+                SELECT * 
+                FROM {table_name}
+                WHERE price IS NOT NULL AND price != ''
+                ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
+                LIMIT {per_page} OFFSET {offset}
+            """)
+            products = cursor.fetchall()
+            conn.close()
+            return products
+
+        # Fetch the products for the selected table
+        products = get_products_from_table(db_name, table_name, page, per_page)
+        
+        if products is None:
+            # Table doesn't exist
+            return render_template(
+                'index.html', 
+                table_names=get_table_names(db_name), 
+                error=f"Table '{table_name}' not found",
+                page=1,
+                total_pages=0
+            )
+        
+        # Fetch total number of products to calculate total pages
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE price IS NOT NULL AND price != ''")
+        total_products = cursor.fetchone()[0]
         conn.close()
-        return products
 
-    # Fetch the products for the selected table
-    products = get_products_from_table(db_name, table_name, page, per_page)
-    
-    # Fetch total number of products to calculate total pages
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE price IS NOT NULL AND price != ''")
-    total_products = cursor.fetchone()[0]
-    conn.close()
+        total_pages = (total_products // per_page) + (1 if total_products % per_page != 0 else 0)
 
-    total_pages = (total_products // per_page) + (1 if total_products % per_page != 0 else 0)
-
-    # Return the template with the products and pagination info
-    return render_template(
-        'index.html', 
-        table_names=get_table_names(db_name), 
-        products=products, 
-        selected_table=table_name,
-        page=page,
-        total_pages=total_pages
-    )
+        # Return the template with the products and pagination info
+        return render_template(
+            'index.html', 
+            table_names=get_table_names(db_name), 
+            products=products, 
+            selected_table=table_name,
+            page=page,
+            total_pages=total_pages
+        )
+    except Exception as e:
+        print(f"Error in get_products_by_table: {str(e)}")
+        return render_template(
+            'index.html', 
+            table_names=get_table_names(db_name), 
+            error=f"Error retrieving products: {str(e)}",
+            page=1,
+            total_pages=0
+        )
 
 @app.route('/products/<path:filename>')
 def serve_products(filename):
@@ -259,7 +294,7 @@ def get_products_api():
         prefix = now.strftime("%Y%m%d%H%M%S%f_")
 
         db_name = "product_data.db"
-        table_name = f"search_{current_time}_{store.replace(' ', '_')}"
+        table_name = sanitize_table_name(f"search_{current_time}_{store}")
         
         workbook = xlwt.Workbook()
         sheet = workbook.add_sheet('Sheet1')
@@ -275,7 +310,7 @@ def get_products_api():
         if result != "success":
             return jsonify({"error": "Failed to fetch products"}), 500
 
-        return jsonify({"message": "Products fetched successfully"})
+        return jsonify({"message": "Products fetched successfully", "table_name": table_name})
 
     except Exception as e:
         print(f"Error in get_products_api: {str(e)}")
