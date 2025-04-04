@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Listings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+        
+        <!-- Left Side: Table List -->
+        <div class="w-full md:w-1/3 bg-white p-4 rounded-lg shadow-lg overflow-y-auto max-h-screen">
+            <h2 class="text-xl font-bold mb-4">Walmart Tables</h2>
+            
+            <!-- Table Search Bar -->
+            <input type="text" id="tableSearch" onkeyup="filterTable()" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+                placeholder="Search in table...">
+            
+                <ul id="tableList" class="list-none">
+                    {% for table_name in table_names %}
+                        <li class="py-2 px-3 border-b hover:bg-gray-200 cursor-pointer" 
+                            onclick="window.location.href='/products/{{ table_name }}'">
+                            {{ table_name }}
+                        </li>
+                    {% endfor %}
+                </ul>
+        </div>
+
+        <!-- Right Side: Product Grid -->
+        <div class="w-full md:w-2/3">
+            <h2 class="text-xl font-bold mb-4">Walmart Listings</h2>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="keyword" class="px-3 py-2 border rounded-lg w-1/2" placeholder="Enter keyword...">
+                <button id="searchButton" onclick="fetchProducts()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Search</button>
+            </div>
+        
+            <!-- Grid Search Bar -->
+            <input type="text" id="gridSearch" onkeyup="filterGrid()" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+                placeholder="Search in product list...">
+
+            <button onclick="submitSelectedProducts()" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg">Submit Selected</button>
+            
+            <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% if products %}
+                    {% set max_score_product = products | sort(attribute='11', reverse=True) | first %}
+                    {% for product in products %}
+                        <div class="bg-white p-4 rounded-lg shadow-lg">
+                            <input type="checkbox" class="productCheckbox" data-product='{{ product | tojson | safe }}'>
+                            <a href="{{ product[2]}}" target="_blank">
+                                <img src="/{{ product[7] }}" alt="{{ product[1] }}" class="w-full h-40 object-cover rounded-md">
+                            </a>
+                            <h2 class="text-lg font-semibold mt-2">{{ product[5] }}</h2>
+                            <p class="text-blue-600 font-bold mt-1">{{ product[6] }}</p>
+                            <p class="text-sm text-gray-600 mt-1">Store: {{ product[4] }}</p>
+            
+                            <!-- Display Recommendation Badge if this product has the highest score -->
+                            {% if product == max_score_product %}
+                                <div class="mt-2 text-sm text-white bg-green-600 px-2 py-1 rounded-full">Recommended</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-gray-600">No products available in this table.</p>
+                {% endif %}
+            </div>
+            
+
+            <div class="flex justify-center mt-4">
+                {% if page > 1 %}
+                    <a href="/products/{{ selected_table }}?page={{ page - 1 }}" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg mr-2">
+                        Previous
+                    </a>
+                {% endif %}
+                <span class="px-4 py-2 text-lg">{{ page }} / {{ total_pages }}</span>
+                {% if page < total_pages %}
+                    <a href="/products/{{ selected_table }}?page={{ page + 1 }}" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg ml-2">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+                
+        </div>
+
+        <div id="loadingModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <p class="text-lg font-semibold">Searching...</p>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productName = urlParams.get('name');
+            if (productName) {
+                // You can use the productName value here
+                console.log('Product Name:', productName);
+                // Example: Set it to an input field or display it
+                document.getElementById('keyword').value = productName;
+            }
+        });
+
+        // Table Search Function
+        function filterTable() {
+            let input = document.getElementById("tableSearch").value.toLowerCase();
+            let items = document.querySelectorAll("#tableList li");
+
+            items.forEach(item => {
+                let text = item.innerText.toLowerCase();
+                item.style.display = text.includes(input) ? "block" : "none";
+            });
+        }
+
+        // Product Grid Search Function
+        function filterGrid() {
+            let input = document.getElementById("gridSearch").value.toLowerCase();
+            let products = document.querySelectorAll("#productGrid > div");
+
+            products.forEach(product => {
+                let title = product.querySelector("h2").innerText.toLowerCase();
+
+                product.style.display = title.includes(input) ? "block" : "none";
+            });
+        }
+
+        function fetchProducts() {
+            const button = document.getElementById('searchButton');
+            const loadingModal = document.getElementById('loadingModal');
+            
+            button.disabled = true;
+            loadingModal.classList.remove('hidden'); // Show loading modal
+            
+            let keyword = document.getElementById("keyword").value.trim();
+
+            if (!keyword) {
+                alert("Please enter keyword.");
+                loadingModal.classList.add('hidden'); // Hide modal on validation error
+                button.disabled = false;
+                return;
+            }
+
+            fetch(`/get_products?keyword=${encodeURIComponent(keyword)}&item_count=20`)
+            .then(response => response.json())
+            .then(data => {
+                alert("Search completed");
+                document.location.reload();
+            })
+            .finally(() => {
+                loadingModal.classList.add('hidden'); // Hide loading modal when done
+                button.disabled = false;
+            });
+        }
+
+        function submitSelectedProducts() {
+            let selectedProducts = [];
+            document.querySelectorAll(".productCheckbox:checked").forEach(checkbox => {
+                selectedProducts.push(JSON.parse(checkbox.dataset.product));
+            });
+            if (selectedProducts.length === 0) {
+                alert("No products selected.");
+                return;
+            }
+            fetch("/submit_products", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ products: selectedProducts })
+            }).then(response => response.json())
+              .then(data => alert("Submission successful"))
+              .catch(error => alert("Error submitting data: " + error));
+        }
+    </script>
+
+</body>
+</html>

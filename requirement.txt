@@ -1,0 +1,10 @@
+requests  
+beautifulsoup4  
+xlwt  
+fake_useragent  
+selenium  
+undetected_chromedriver  
+webdriver-manager
+flask
+flask_cors
+python-dotenv
