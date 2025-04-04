@@ -258,6 +258,14 @@ def clean_rating_count(value):
     except ValueError:
         return 0  # Return 0 if conversion fails
 
+def sanitize_table_name(name):
+    # Replace any non-alphanumeric characters (except underscores) with underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    # Ensure the name starts with a letter
+    if not sanitized[0].isalpha():
+        sanitized = 'table_' + sanitized
+    return sanitized
+
 @app.route('/')
 def index():
     db_name = "product_data.db"
@@ -402,7 +410,7 @@ def get_products_api():
     os.mkdir("products/"+current_time+"_"+keyword+"/images")
 
     db_name = "product_data.db"
-    table_name = f"search_{current_time}_{keyword.replace(' ', '_')}"
+    table_name = sanitize_table_name(f"search_{current_time}_{keyword}")
     
     workbook = xlwt.Workbook()
     sheet = workbook.add_sheet('Sheet1')
