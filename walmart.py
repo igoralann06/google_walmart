@@ -137,6 +137,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
         driver.execute_script("document.body.style.zoom='25%'")
         scroll_to_bottom_multiple_times(driver, 2, 80)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
+        print(elements)
         for element in elements:
 
             image_url = ""
@@ -246,30 +247,25 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
     return products
 
 def get_records(db_name, table_name, store, current_time, prefix):
-    try:
-        options = uc.ChromeOptions()
-        # options.add_argument("--headless=new")  # Enable headless mode
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-software-rasterizer")
-        options.add_argument("--start-maximized")  # Debugging support
-        driver = uc.Chrome(options=options)
-        
-        # Create directories if they don't exist
-        if not os.path.isdir("products"):
-            os.mkdir("products")
-        if not os.path.isdir(f"products/{current_time}"):
-            os.mkdir(f"products/{current_time}")
-        if not os.path.isdir(f"products/{current_time}/images"):
-            os.mkdir(f"products/{current_time}/images")
-        
-        get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
-        
-    except Exception as e:
-        print(f"Error in get_records: {str(e)}")
-        return []
+    options = uc.ChromeOptions()
+    # options.add_argument("--headless=new")  # Enable headless mode
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--start-maximized")  # Debugging support
+    driver = uc.Chrome(options=options)
+    
+    # Create directories if they don't exist
+    if not os.path.isdir("products"):
+        os.mkdir("products")
+    if not os.path.isdir(f"products/{current_time}"):
+        os.mkdir(f"products/{current_time}")
+    if not os.path.isdir(f"products/{current_time}/images"):
+        os.mkdir(f"products/{current_time}/images")
+    
+    get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
 
 
 
