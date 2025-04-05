@@ -264,18 +264,9 @@ def get_records(db_name, table_name, store, current_time, prefix):
             os.mkdir(f"products/{current_time}")
         if not os.path.isdir(f"products/{current_time}/images"):
             os.mkdir(f"products/{current_time}/images")
-            
-        try:
-            records = get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
-            return records
-        except Exception as e:
-            print(f"Error in get_product_list: {str(e)}")
-            return []
-        finally:
-            try:
-                driver.quit()
-            except:
-                pass
+        
+        get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
+        
     except Exception as e:
         print(f"Error in get_records: {str(e)}")
         return []
