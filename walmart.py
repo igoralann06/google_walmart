@@ -134,9 +134,9 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
     for category in categories:
         driver.get(category)
-        driver.execute_script("document.body.style.zoom='25%'")
-        scroll_to_bottom_multiple_times(driver, 2, 80)
-        time.sleep(5)
+        driver.execute_script("document.body.style.zoom='40%'")
+        scroll_to_bottom_multiple_times(driver, 2, 50)
+        time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
         print(elements)
         for element in elements:
