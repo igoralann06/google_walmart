@@ -21,7 +21,17 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 import base64
 from flask_cors import CORS
 
-from walmart import get_records
+from walmart import get_walmart_products
+from aldi import get_aldi_products
+from bjs import get_bjs_products
+from costco import get_costco_products
+from milams import get_milams_products
+from publix import get_publix_products
+from restaurant_depot import get_restaurant_depot_products
+from sabor_tropical import get_sabor_tropical_products
+from sams import get_sams_products
+from target import get_target_products
+
 
 app = Flask(__name__)
 CORS(app)
@@ -29,6 +39,20 @@ CORS(app)
 # Remove timeout limit
 app.config['TIMEOUT'] = None
 app.config['PERMANENT_SESSION_LIFETIME'] = None
+
+# Add available stores list
+AVAILABLE_STORES = [
+    "aldi",
+    "bjs",
+    "costco",
+    "milams",
+    "publix",
+    "restaurant_depot",
+    "sabor_tropical",
+    "sams",
+    "target",
+    "walmart"
+]
 
 def create_database_table(db_name, table_name):
     conn = sqlite3.connect(db_name)
@@ -108,8 +132,28 @@ def clean_rating(value):
         return 0.0  # Return 0 if conversion fails
 
 def get_products(store, db_name, table_name, current_time, prefix, item_count):
-    get_records(db_name, table_name, store, current_time, prefix)
-    return "success"
+    if store == "aldi":
+        get_aldi_products(db_name, table_name, store, current_time, prefix)
+    elif store == "bjs":
+        get_bjs_products(db_name, table_name, store, current_time, prefix)
+    elif store == "costco":
+        get_costco_products(db_name, table_name, store, current_time, prefix)
+    elif store == "milams":
+        get_milams_products(db_name, table_name, store, current_time, prefix)
+    elif store == "publix":
+        get_publix_products(db_name, table_name, store, current_time, prefix)
+    elif store == "restaurant_depot":
+        get_restaurant_depot_products(db_name, table_name, store, current_time, prefix)
+    elif store == "sabor_tropical":
+        get_sabor_tropical_products(db_name, table_name, store, current_time, prefix)
+    elif store == "sams":
+        get_sams_products(db_name, table_name, store, current_time, prefix)
+    elif store == "target":
+        get_target_products(db_name, table_name, store, current_time, prefix)
+    elif store == "walmart":
+        get_walmart_products(db_name, table_name, store, current_time, prefix)
+    else:
+        return "success"
 
 def clean_rating_count(value):
     """Convert rating count from string to an integer."""
@@ -151,8 +195,12 @@ def index():
     # Fetch the table names
     table_names = get_table_names(db_name)
 
-    # Pass the table names to the template
-    return render_template('index.html', table_names=table_names, page=page, total_pages=0)
+    # Pass the table names and available stores to the template
+    return render_template('index.html', 
+                         table_names=table_names, 
+                         page=page, 
+                         total_pages=0,
+                         available_stores=AVAILABLE_STORES)
 
 @app.route('/products/<table_name>')
 def get_products_by_table(table_name):
@@ -204,7 +252,8 @@ def get_products_by_table(table_name):
                 table_names=get_table_names(db_name), 
                 error=f"Table '{table_name}' not found",
                 page=1,
-                total_pages=0
+                total_pages=0,
+                available_stores=AVAILABLE_STORES
             )
         
         # Fetch total number of products to calculate total pages
@@ -223,7 +272,8 @@ def get_products_by_table(table_name):
             products=products, 
             selected_table=table_name,
             page=page,
-            total_pages=total_pages
+            total_pages=total_pages,
+            available_stores=AVAILABLE_STORES
         )
     except Exception as e:
         print(f"Error in get_products_by_table: {str(e)}")
@@ -232,7 +282,8 @@ def get_products_by_table(table_name):
             table_names=get_table_names(db_name), 
             error=f"Error retrieving products: {str(e)}",
             page=1,
-            total_pages=0
+            total_pages=0,
+            available_stores=AVAILABLE_STORES
         )
 
 @app.route('/products/<path:filename>')

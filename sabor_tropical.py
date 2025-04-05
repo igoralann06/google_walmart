@@ -15,79 +15,74 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
-import sys
 import sqlite3
+
+import sys
 
 sys.path.append("../..")
 from google_shopping_api import get_products, create_database_table
 
-base_url = "https://www.walmart.com"
+base_url = "https://www.samsclub.com"
 section_id = 1
 page = 1
 products = []
 product_links = []
 
 categories = [
-    "https://www.instacart.com/store/walmart/collections/n-great-value-19053",
-    "https://www.instacart.com/store/walmart/collections/produce",
-    "https://www.instacart.com/store/walmart/collections/meat-and-seafood",
-    "https://www.instacart.com/store/walmart/collections/snacks-and-candy",
-    "https://www.instacart.com/store/walmart/collections/frozen",
-    "https://www.instacart.com/store/walmart/collections/dairy",
-    "https://www.instacart.com/store/walmart/collections/household",
-    "https://www.instacart.com/store/walmart/collections/beverages",
-    "https://www.instacart.com/store/walmart/collections/pets",
-    "https://www.instacart.com/store/walmart/collections/baked-goods",
-    "https://www.instacart.com/store/walmart/collections/3095-prepared-foods",
-    "https://www.instacart.com/store/walmart/collections/personal-care",
-    "https://www.instacart.com/store/walmart/collections/3089-deli",
-    "https://www.instacart.com/store/walmart/collections/canned-goods",
-    "https://www.instacart.com/store/walmart/collections/electronics",
-    "https://www.instacart.com/store/walmart/collections/breakfast-foods",
-    "https://www.instacart.com/store/walmart/collections/health-care",
-    "https://www.instacart.com/store/walmart/collections/dry-goods-pasta",
-    "https://www.instacart.com/store/walmart/collections/oils-vinegars-spices",
-    "https://www.instacart.com/store/walmart/collections/condiments-sauces",
-    "https://www.instacart.com/store/walmart/collections/home-garden",
-    "https://www.instacart.com/store/walmart/collections/baking-essentials",
-    "https://www.instacart.com/store/walmart/collections/baby",
-    "https://www.instacart.com/store/walmart/collections/office-craft",
-    "https://www.instacart.com/store/walmart/collections/floral",
-    "https://www.instacart.com/store/walmart/collections/party-gifts",
-    "https://www.instacart.com/store/walmart/collections/3161-other-goods",
-    "https://www.instacart.com/store/walmart/collections/sports-outdoors",
-    "https://www.instacart.com/store/walmart/collections/dynamic_collection-sales"
+    "https://www.instacart.com/store/sabor-tropical/collections/meat-and-seafood",
+    "https://www.instacart.com/store/sabor-tropical/collections/produce",
+    "https://www.instacart.com/store/sabor-tropical/collections/household",
+    "https://www.instacart.com/store/sabor-tropical/collections/beverages",
+    "https://www.instacart.com/store/sabor-tropical/collections/baked-goods",
+    "https://www.instacart.com/store/sabor-tropical/collections/dairy",
+    "https://www.instacart.com/store/sabor-tropical/collections/snacks-and-candy",
+    "https://www.instacart.com/store/sabor-tropical/collections/breakfast-foods",
+    "https://www.instacart.com/store/sabor-tropical/collections/canned-goods",
+    "https://www.instacart.com/store/sabor-tropical/collections/baking-essentials",
+    "https://www.instacart.com/store/sabor-tropical/collections/frozen",
+    "https://www.instacart.com/store/sabor-tropical/collections/condiments-sauces",
+    "https://www.instacart.com/store/sabor-tropical/collections/oils-vinegars-spices",
+    "https://www.instacart.com/store/sabor-tropical/collections/dry-goods-pasta",
+    "https://www.instacart.com/store/sabor-tropical/collections/3089-deli",
+    "https://www.instacart.com/store/sabor-tropical/collections/personal-care",
+    "https://www.instacart.com/store/sabor-tropical/collections/floral",
+    "https://www.instacart.com/store/sabor-tropical/collections/857-miscellaneous-grocery",
+    "https://www.instacart.com/store/sabor-tropical/collections/3095-prepared-foods",
+    "https://www.instacart.com/store/sabor-tropical/collections/kitchen-supplies",
+    "https://www.instacart.com/store/sabor-tropical/collections/pets",
+    "https://www.instacart.com/store/sabor-tropical/collections/health-care",
+    "https://www.instacart.com/store/sabor-tropical/collections/office-craft",
+    "https://www.instacart.com/store/sabor-tropical/collections/baby",
+    "https://www.instacart.com/store/sabor-tropical/collections/party-gifts",
+    "https://www.instacart.com/store/sabor-tropical/collections/dynamic_collection-sales"
 ]
 
 category_titles = [
-    "Great Value",
-    "Produce",
     "Meat & Seafood",
-    "Snacks & Candy",
-    "Frozen",
-    "Dairy & Eggs",
+    "Produce",
     "Household",
     "Beverages",
-    "Pets",
     "Bakery",
-    "Prepared Foods",
-    "Personal Care",
-    "Deli",
-    "Canned Goods & Soups",
-    "Electronics",
+    "Dairy & Eggs",
+    "Snacks & Candy",
     "Breakfast",
-    "Health Care",
-    "Dry Goods & Pasta",
-    "Oils, Vinegars, & Spices",
-    "Condiments & Sauces",
-    "Home & Garden",
+    "Canned Goods & Soups",
     "Baking Essentials",
-    "Baby",
-    "Office & Craft",
+    "Frozen",
+    "Condiments & Sauces",
+    "Oils, Vinegars, & Spices",
+    "Dry Goods & Pasta",
+    "Deli",
+    "Personal Care",
     "Floral",
+    "Miscellaneous",
+    "Prepared Foods",
+    "Kitchen Supplies",
+    "Pets",
+    "Health Care", 
+    "Office & Craft",
+    "Baby",
     "Party & Gift Supplies",
-    "Other Goods",
-    "Sporting Goods",
     "Sales"
 ]
 
@@ -138,7 +133,6 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
         scroll_to_bottom_multiple_times(driver, 2, 50)
         time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
-        print(elements)
         for element in elements:
 
             image_url = ""
@@ -154,7 +148,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
             try:
                 img_element = element.find_element(By.TAG_NAME, "img")
-                image_url = img_element.get_dom_attribute("srcset").split(", ")[0]
+                image_url = img_element.get_attribute("srcset").split(", ")[0]
             except:
                 image_url = ""
             
@@ -184,7 +178,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             
             try:
                 product_link_element = element.find_element(By.TAG_NAME, "a")
-                product_link = product_link_element.get_dom_attribute("href")
+                product_link = product_link_element.get_attribute("href")
             except:
                 product_link = ""
 
@@ -223,7 +217,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 "https://instacart.com",
                 "https://instacart.com"+product_link,
                 "Instacart",
-                "Walmart",
+                "Sabor Tropical",
                 title,
                 price,
                 download_url,
@@ -242,12 +236,10 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-    
-    driver.quit()
-    
+
     return products
 
-def get_walmart_products(db_name, table_name, store, current_time, prefix):
+def get_sabor_tropical_products(db_name, table_name, store, current_time, prefix):
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")

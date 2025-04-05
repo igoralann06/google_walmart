@@ -15,80 +15,79 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
-import sys
 import sqlite3
+
+import sys
 
 sys.path.append("../..")
 from google_shopping_api import get_products, create_database_table
 
-base_url = "https://www.walmart.com"
+base_url = "https://www.aldi.com"
 section_id = 1
 page = 1
 products = []
 product_links = []
 
 categories = [
-    "https://www.instacart.com/store/walmart/collections/n-great-value-19053",
-    "https://www.instacart.com/store/walmart/collections/produce",
-    "https://www.instacart.com/store/walmart/collections/meat-and-seafood",
-    "https://www.instacart.com/store/walmart/collections/snacks-and-candy",
-    "https://www.instacart.com/store/walmart/collections/frozen",
-    "https://www.instacart.com/store/walmart/collections/dairy",
-    "https://www.instacart.com/store/walmart/collections/household",
-    "https://www.instacart.com/store/walmart/collections/beverages",
-    "https://www.instacart.com/store/walmart/collections/pets",
-    "https://www.instacart.com/store/walmart/collections/baked-goods",
-    "https://www.instacart.com/store/walmart/collections/3095-prepared-foods",
-    "https://www.instacart.com/store/walmart/collections/personal-care",
-    "https://www.instacart.com/store/walmart/collections/3089-deli",
-    "https://www.instacart.com/store/walmart/collections/canned-goods",
-    "https://www.instacart.com/store/walmart/collections/electronics",
-    "https://www.instacart.com/store/walmart/collections/breakfast-foods",
-    "https://www.instacart.com/store/walmart/collections/health-care",
-    "https://www.instacart.com/store/walmart/collections/dry-goods-pasta",
-    "https://www.instacart.com/store/walmart/collections/oils-vinegars-spices",
-    "https://www.instacart.com/store/walmart/collections/condiments-sauces",
-    "https://www.instacart.com/store/walmart/collections/home-garden",
-    "https://www.instacart.com/store/walmart/collections/baking-essentials",
-    "https://www.instacart.com/store/walmart/collections/baby",
-    "https://www.instacart.com/store/walmart/collections/office-craft",
-    "https://www.instacart.com/store/walmart/collections/floral",
-    "https://www.instacart.com/store/walmart/collections/party-gifts",
-    "https://www.instacart.com/store/walmart/collections/3161-other-goods",
-    "https://www.instacart.com/store/walmart/collections/sports-outdoors",
-    "https://www.instacart.com/store/walmart/collections/dynamic_collection-sales"
+    "https://www.instacart.com/store/costco/collections/rc-a-34561-kirkland-signature?unauth-refresh=1",
+    "https://www.instacart.com/store/costco/collections/snacks-and-candy",
+    "https://www.instacart.com/store/costco/collections/9859-deli-dairy",
+    "https://www.instacart.com/store/costco/collections/produce",
+    "https://www.instacart.com/store/costco/collections/beverages",
+    "https://www.instacart.com/store/costco/collections/1365-pantry-gen-merch",
+    "https://www.instacart.com/store/costco/collections/frozen",
+    "https://www.instacart.com/store/costco/collections/household",
+    "https://www.instacart.com/store/costco/collections/9909-health-personal-care",
+    "https://www.instacart.com/store/costco/collections/meat-and-seafood",
+    "https://www.instacart.com/store/costco/collections/9886-paper-goods",
+    "https://www.instacart.com/store/costco/collections/9904-cleaning-laundry",
+    "https://www.instacart.com/store/costco/collections/pets",
+    "https://www.instacart.com/store/costco/collections/baked-goods",
+    "https://www.instacart.com/store/costco/collections/9809-home-goods",
+    "https://www.instacart.com/store/costco/collections/electronics",
+    "https://www.instacart.com/store/costco/collections/baby",
+    "https://www.instacart.com/store/costco/collections/9929-other-goods",
+    "https://www.instacart.com/store/costco/collections/dynamic_collection-sales",
+    "https://www.instacart.com/store/costco/collections/rc-cakes",
+    "https://www.instacart.com/store/costco/collections/rc-whats-new",
+    "https://www.instacart.com/store/costco/collections/rc-fall-favorites",
+    "https://www.instacart.com/store/costco/collections/rc-large-item-delivery",
+    "https://www.instacart.com/store/costco/collections/rc-get-ready-for-fall-2024",
+    "https://www.instacart.com/store/costco/collections/10888-liquor-ready-drinks?sisid=29603",
+    "https://www.instacart.com/store/costco/collections/10242-beer-cider",
+    "https://www.instacart.com/store/costco/collections/rc-valentines-favorites",
+    "https://www.instacart.com/store/costco/collections/10235-wine"
 ]
 
 category_titles = [
-    "Great Value",
-    "Produce",
-    "Meat & Seafood",
+    "Kirkland Signature",
     "Snacks & Candy",
-    "Frozen",
-    "Dairy & Eggs",
-    "Household",
+    "Deli & Dairy",
+    "Produce",
     "Beverages",
+    "Pantry",
+    "Frozen",
+    "Household",
+    "Health & Personal Care",
+    "Meat & Seafood",
+    "Paper Goods",
+    "Cleaning & Laundry",
     "Pets",
     "Bakery",
-    "Prepared Foods",
-    "Personal Care",
-    "Deli",
-    "Canned Goods & Soups",
+    "Home Goods",
     "Electronics",
-    "Breakfast",
-    "Health Care",
-    "Dry Goods & Pasta",
-    "Oils, Vinegars, & Spices",
-    "Condiments & Sauces",
-    "Home & Garden",
-    "Baking Essentials",
     "Baby",
-    "Office & Craft",
-    "Floral",
-    "Party & Gift Supplies",
     "Other Goods",
-    "Sporting Goods",
-    "Sales"
+    "Sales",
+    "Cakes",
+    "What's New",
+    "Fall Favorites",
+    "Large Item Delivery",
+    "Get ready for Fall",
+    "Liquor & Ready Drinks",
+    "Beer",
+    "Valentine's Favorites",
+    "Wine"
 ]
 
 def is_relative_url(string):
@@ -138,7 +137,6 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
         scroll_to_bottom_multiple_times(driver, 2, 50)
         time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
-        print(elements)
         for element in elements:
 
             image_url = ""
@@ -154,7 +152,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
             try:
                 img_element = element.find_element(By.TAG_NAME, "img")
-                image_url = img_element.get_dom_attribute("srcset").split(", ")[0]
+                image_url = img_element.get_attribute("srcset").split(", ")[0]
             except:
                 image_url = ""
             
@@ -184,7 +182,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             
             try:
                 product_link_element = element.find_element(By.TAG_NAME, "a")
-                product_link = product_link_element.get_dom_attribute("href")
+                product_link = product_link_element.get_attribute("href")
             except:
                 product_link = ""
 
@@ -223,7 +221,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 "https://instacart.com",
                 "https://instacart.com"+product_link,
                 "Instacart",
-                "Walmart",
+                "Costco",
                 title,
                 price,
                 download_url,
@@ -242,12 +240,10 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-    
-    driver.quit()
-    
+
     return products
 
-def get_walmart_products(db_name, table_name, store, current_time, prefix):
+def get_costco_products(db_name, table_name, store, current_time, prefix):
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")

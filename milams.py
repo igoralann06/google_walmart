@@ -15,86 +15,112 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
-import sys
 import sqlite3
+
+import sys
 
 sys.path.append("../..")
 from google_shopping_api import get_products, create_database_table
 
-base_url = "https://www.walmart.com"
+base_url = "https://www.costco.com"
 section_id = 1
 page = 1
 products = []
 product_links = []
 
 categories = [
-    "https://www.instacart.com/store/walmart/collections/n-great-value-19053",
-    "https://www.instacart.com/store/walmart/collections/produce",
-    "https://www.instacart.com/store/walmart/collections/meat-and-seafood",
-    "https://www.instacart.com/store/walmart/collections/snacks-and-candy",
-    "https://www.instacart.com/store/walmart/collections/frozen",
-    "https://www.instacart.com/store/walmart/collections/dairy",
-    "https://www.instacart.com/store/walmart/collections/household",
-    "https://www.instacart.com/store/walmart/collections/beverages",
-    "https://www.instacart.com/store/walmart/collections/pets",
-    "https://www.instacart.com/store/walmart/collections/baked-goods",
-    "https://www.instacart.com/store/walmart/collections/3095-prepared-foods",
-    "https://www.instacart.com/store/walmart/collections/personal-care",
-    "https://www.instacart.com/store/walmart/collections/3089-deli",
-    "https://www.instacart.com/store/walmart/collections/canned-goods",
-    "https://www.instacart.com/store/walmart/collections/electronics",
-    "https://www.instacart.com/store/walmart/collections/breakfast-foods",
-    "https://www.instacart.com/store/walmart/collections/health-care",
-    "https://www.instacart.com/store/walmart/collections/dry-goods-pasta",
-    "https://www.instacart.com/store/walmart/collections/oils-vinegars-spices",
-    "https://www.instacart.com/store/walmart/collections/condiments-sauces",
-    "https://www.instacart.com/store/walmart/collections/home-garden",
-    "https://www.instacart.com/store/walmart/collections/baking-essentials",
-    "https://www.instacart.com/store/walmart/collections/baby",
-    "https://www.instacart.com/store/walmart/collections/office-craft",
-    "https://www.instacart.com/store/walmart/collections/floral",
-    "https://www.instacart.com/store/walmart/collections/party-gifts",
-    "https://www.instacart.com/store/walmart/collections/3161-other-goods",
-    "https://www.instacart.com/store/walmart/collections/sports-outdoors",
-    "https://www.instacart.com/store/walmart/collections/dynamic_collection-sales"
+    "https://www.instacart.com/store/milams/collections/produce",
+    "https://www.instacart.com/store/milams/collections/meat-and-seafood",
+    "https://www.instacart.com/store/milams/collections/3095-prepared-foods",
+    "https://www.instacart.com/store/milams/collections/dairy",
+    "https://www.instacart.com/store/milams/collections/beverages",
+    "https://www.instacart.com/store/milams/collections/snacks-and-candy",
+    "https://www.instacart.com/store/milams/collections/household",
+    "https://www.instacart.com/store/milams/collections/floral",
+    "https://www.instacart.com/store/milams/collections/baked-goods",
+    "https://www.instacart.com/store/milams/collections/frozen",
+    "https://www.instacart.com/store/milams/collections/3089-deli",
+    "https://www.instacart.com/store/milams/collections/oils-vinegars-spices",
+    "https://www.instacart.com/store/milams/collections/canned-goods",
+    "https://www.instacart.com/store/milams/collections/breakfast-foods",
+    "https://www.instacart.com/store/milams/collections/dry-goods-pasta",
+    "https://www.instacart.com/store/milams/collections/kitchen-supplies",
+    "https://www.instacart.com/store/milams/collections/condiments-sauces",
+    "https://www.instacart.com/store/milams/collections/personal-care",
+    "https://www.instacart.com/store/milams/collections/health-care",
+    "https://www.instacart.com/store/milams/collections/baking-essentials",
+    "https://www.instacart.com/store/milams/collections/857-miscellaneous-grocery",
+    "https://www.instacart.com/store/milams/collections/pets",
+    "https://www.instacart.com/store/milams/collections/24236-catering",
+    "https://www.instacart.com/store/milams/collections/office-craft",
+    "https://www.instacart.com/store/milams/collections/baby",
+    "https://www.instacart.com/store/milams/collections/party-gifts",
+    "https://www.instacart.com/store/milams/collections/dynamic_collection-sales",
+    "https://www.instacart.com/store/milams/collections/rc-stone-crab-claws",
+    "https://www.instacart.com/store/milams/collections/n-so-flo-taste-recipes-98745",
+    "https://www.instacart.com/store/milams/collections/rc-certifiably-superior-steaks",
+    "https://www.instacart.com/store/milams/collections/n-milam-s-favorites-31028",
+    "https://www.instacart.com/store/milams/collections/n-best-selling-gluten-free-items-39347",
+    "https://www.instacart.com/store/milams/collections/n-best-selling-vegan-items-67637",
+    "https://www.instacart.com/store/milams/collections/n-best-selling-organic-items-22900",
+    "https://www.instacart.com/store/milams/collections/n-beer-58072"
 ]
 
 category_titles = [
-    "Great Value",
     "Produce",
     "Meat & Seafood",
-    "Snacks & Candy",
-    "Frozen",
-    "Dairy & Eggs",
-    "Household",
-    "Beverages",
-    "Pets",
-    "Bakery",
     "Prepared Foods",
-    "Personal Care",
-    "Deli",
-    "Canned Goods & Soups",
-    "Electronics",
-    "Breakfast",
-    "Health Care",
-    "Dry Goods & Pasta",
-    "Oils, Vinegars, & Spices",
-    "Condiments & Sauces",
-    "Home & Garden",
-    "Baking Essentials",
-    "Baby",
-    "Office & Craft",
+    "Dairy & Eggs",
+    "Beverages",
+    "Snacks & Candy",
+    "Household",
     "Floral",
+    "Bakery",
+    "Frozen",
+    "Deli",
+    "Oils, Vinegars, & Spices",
+    "Canned Goods & Soups",
+    "Breakfast",
+    "Dry Goods & Pasta",
+    "Kitchen Supplies",
+    "Condiments & Sauces",
+    "Personal Care",
+    "Health Care",
+    "Baking Essentials",
+    "Miscellaneous",
+    "Pets",
+    "Catering",
+    "Office & Craft",
+    "Baby",
     "Party & Gift Supplies",
-    "Other Goods",
-    "Sporting Goods",
-    "Sales"
+    "Sales",
+    "Stone Crab Claws",
+    "SoFlo Taste Recipes",
+    "Certifiably Superior Steaks",
+    "Milam's Favorites",
+    "Best Selling Gluten Free Items",
+    "Best Selling Vegan Items",
+    "Best Selling Organic Items",
+    "Beer"
 ]
 
 def is_relative_url(string):
     # Check if the string starts with '/' and matches a valid URL path
     pattern = r"^\/([a-z0-9\-._~!$&'()*+,;=:%]+\/?)*$"
     return bool(re.match(pattern, string))
+
+def insert_product_record(db_name, table_name, record):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    
+    insert_query = f"""
+    INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    
+    cursor.execute(insert_query, record)
+    conn.commit()
+    conn.close()
 
 def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10):
     last_height = driver.execute_script("return document.body.scrollHeight")
@@ -112,19 +138,6 @@ def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10)
         last_height = new_height
         scroll_count += 1
 
-def insert_product_record(db_name, table_name, record):
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-    
-    insert_query = f"""
-    INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    
-    cursor.execute(insert_query, record)
-    conn.commit()
-    conn.close()
-
 def get_product_list(driver, db_name, table_name, current_time, prefix):
     global section_id, categories
     num = 0
@@ -138,7 +151,6 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
         scroll_to_bottom_multiple_times(driver, 2, 50)
         time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
-        print(elements)
         for element in elements:
 
             image_url = ""
@@ -154,7 +166,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
             try:
                 img_element = element.find_element(By.TAG_NAME, "img")
-                image_url = img_element.get_dom_attribute("srcset").split(", ")[0]
+                image_url = img_element.get_attribute("srcset").split(", ")[0]
             except:
                 image_url = ""
             
@@ -184,7 +196,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             
             try:
                 product_link_element = element.find_element(By.TAG_NAME, "a")
-                product_link = product_link_element.get_dom_attribute("href")
+                product_link = product_link_element.get_attribute("href")
             except:
                 product_link = ""
 
@@ -223,7 +235,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 "https://instacart.com",
                 "https://instacart.com"+product_link,
                 "Instacart",
-                "Walmart",
+                "Milam's",
                 title,
                 price,
                 download_url,
@@ -242,12 +254,10 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-    
-    driver.quit()
-    
+
     return products
 
-def get_walmart_products(db_name, table_name, store, current_time, prefix):
+def get_milams_products(db_name, table_name, store, current_time, prefix):
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")
@@ -267,6 +277,5 @@ def get_walmart_products(db_name, table_name, store, current_time, prefix):
         os.mkdir(f"products/{current_time}/images")
     
     get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
-
 
 

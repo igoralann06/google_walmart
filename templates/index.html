@@ -34,7 +34,12 @@
             <h2 class="text-xl font-bold mb-4">Product Listings</h2>
             
             <div class="flex gap-2 mb-4">
-                <input type="text" id="store" class="px-3 py-2 border rounded-lg w-1/2" placeholder="Enter store...">
+                <select id="store" class="px-3 py-2 border rounded-lg w-1/2">
+                    <option value="">Select a store...</option>
+                    {% for store in available_stores %}
+                        <option value="{{ store }}">{{ store | title }}</option>
+                    {% endfor %}
+                </select>
                 <button id="searchButton" onclick="fetchProducts()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Search</button>
             </div>
         
@@ -142,7 +147,7 @@
             let store = document.getElementById("store").value.trim();
 
             if (!store) {
-                alert("Please enter store.");
+                alert("Please select a store.");
                 loadingModal.classList.add('hidden'); // Hide modal on validation error
                 button.disabled = false;
                 return;
@@ -151,8 +156,15 @@
             fetch(`/get_products?store=${encodeURIComponent(store)}&item_count=20`)
             .then(response => response.json())
             .then(data => {
-                alert("Search completed");
-                document.location.reload();
+                if (data.error) {
+                    alert("Error: " + data.error);
+                } else {
+                    // Redirect to the new table's page instead of just reloading
+                    window.location.href = `/products/${data.table_name}`;
+                }
+            })
+            .catch(error => {
+                alert("Error: " + error);
             })
             .finally(() => {
                 loadingModal.classList.add('hidden'); // Hide loading modal when done

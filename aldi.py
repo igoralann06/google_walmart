@@ -15,80 +15,97 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
-import sys
 import sqlite3
+
+import sys
 
 sys.path.append("../..")
 from google_shopping_api import get_products, create_database_table
 
-base_url = "https://www.walmart.com"
+base_url = "https://www.aldi.com"
 section_id = 1
 page = 1
 products = []
 product_links = []
 
 categories = [
-    "https://www.instacart.com/store/walmart/collections/n-great-value-19053",
-    "https://www.instacart.com/store/walmart/collections/produce",
-    "https://www.instacart.com/store/walmart/collections/meat-and-seafood",
-    "https://www.instacart.com/store/walmart/collections/snacks-and-candy",
-    "https://www.instacart.com/store/walmart/collections/frozen",
-    "https://www.instacart.com/store/walmart/collections/dairy",
-    "https://www.instacart.com/store/walmart/collections/household",
-    "https://www.instacart.com/store/walmart/collections/beverages",
-    "https://www.instacart.com/store/walmart/collections/pets",
-    "https://www.instacart.com/store/walmart/collections/baked-goods",
-    "https://www.instacart.com/store/walmart/collections/3095-prepared-foods",
-    "https://www.instacart.com/store/walmart/collections/personal-care",
-    "https://www.instacart.com/store/walmart/collections/3089-deli",
-    "https://www.instacart.com/store/walmart/collections/canned-goods",
-    "https://www.instacart.com/store/walmart/collections/electronics",
-    "https://www.instacart.com/store/walmart/collections/breakfast-foods",
-    "https://www.instacart.com/store/walmart/collections/health-care",
-    "https://www.instacart.com/store/walmart/collections/dry-goods-pasta",
-    "https://www.instacart.com/store/walmart/collections/oils-vinegars-spices",
-    "https://www.instacart.com/store/walmart/collections/condiments-sauces",
-    "https://www.instacart.com/store/walmart/collections/home-garden",
-    "https://www.instacart.com/store/walmart/collections/baking-essentials",
-    "https://www.instacart.com/store/walmart/collections/baby",
-    "https://www.instacart.com/store/walmart/collections/office-craft",
-    "https://www.instacart.com/store/walmart/collections/floral",
-    "https://www.instacart.com/store/walmart/collections/party-gifts",
-    "https://www.instacart.com/store/walmart/collections/3161-other-goods",
-    "https://www.instacart.com/store/walmart/collections/sports-outdoors",
-    "https://www.instacart.com/store/walmart/collections/dynamic_collection-sales"
+    "https://www.instacart.com/store/aldi/collections/produce",
+    "https://www.instacart.com/store/aldi/collections/meat-and-seafood",
+    "https://www.instacart.com/store/aldi/collections/snacks-and-candy",
+    "https://www.instacart.com/store/aldi/collections/frozen",
+    "https://www.instacart.com/store/aldi/collections/dairy",
+    "https://www.instacart.com/store/aldi/collections/beverages",
+    "https://www.instacart.com/store/aldi/collections/3095-prepared-foods",
+    "https://www.instacart.com/store/aldi/collections/baked-goods",
+    "https://www.instacart.com/store/aldi/collections/3089-deli",
+    "https://www.instacart.com/store/aldi/collections/canned-goods",
+    "https://www.instacart.com/store/aldi/collections/household",
+    "https://www.instacart.com/store/aldi/collections/dry-goods-pasta",
+    "https://www.instacart.com/store/aldi/collections/oils-vinegars-spices",
+    "https://www.instacart.com/store/aldi/collections/condiments-sauces",
+    "https://www.instacart.com/store/aldi/collections/breakfast-foods",
+    "https://www.instacart.com/store/aldi/collections/baking-essentials",
+    "https://www.instacart.com/store/aldi/collections/pets",
+    "https://www.instacart.com/store/aldi/collections/857-miscellaneous-grocery",
+    "https://www.instacart.com/store/aldi/collections/kitchen-supplies",
+    "https://www.instacart.com/store/aldi/collections/10235-wine",
+    "https://www.instacart.com/store/aldi/collections/personal-care",
+    "https://www.instacart.com/store/aldi/collections/baby",
+    "https://www.instacart.com/store/aldi/collections/health-care",
+    "https://www.instacart.com/store/aldi/collections/party-gifts",
+    "https://www.instacart.com/store/aldi/collections/office-craft",
+    "https://www.instacart.com/store/aldi/collections/10263-hard-beverages",
+    "https://www.instacart.com/store/aldi/collections/floral",
+    "https://www.instacart.com/store/aldi/collections/10242-beer-cider",
+    "https://www.instacart.com/store/aldi/collections/10255-liquor",
+    "https://www.instacart.com/store/aldi/collections/dynamic_collection-sales",
+    "https://www.instacart.com/store/aldi/collections/n-charcuterie-22942",
+    "https://www.instacart.com/store/aldi/collections/rc-2024-aldi-fan-favorites",
+    "https://www.instacart.com/store/aldi/collections/n-toys-33913",
+    "https://www.instacart.com/store/aldi/collections/n-shop-now-91665",
+    "https://www.instacart.com/store/aldi/collections/n-vegan-27620",
+    "https://www.instacart.com/store/aldi/collections/n-organic-90933",
+    "https://www.instacart.com/store/aldi/collections/n-aldi-finds-limited-time-53509"
 ]
 
 category_titles = [
-    "Great Value",
     "Produce",
     "Meat & Seafood",
     "Snacks & Candy",
     "Frozen",
     "Dairy & Eggs",
-    "Household",
     "Beverages",
-    "Pets",
-    "Bakery",
     "Prepared Foods",
-    "Personal Care",
+    "Bakery",
     "Deli",
     "Canned Goods & Soups",
-    "Electronics",
-    "Breakfast",
-    "Health Care",
+    "Household",
     "Dry Goods & Pasta",
     "Oils, Vinegars, & Spices",
     "Condiments & Sauces",
-    "Home & Garden",
+    "Breakfast",
     "Baking Essentials",
+    "Pets",
+    "Miscellaneous",
+    "Kitchen Supplies",
+    "Wine",
+    "Personal Care",
     "Baby",
-    "Office & Craft",
-    "Floral",
+    "Health Care",
     "Party & Gift Supplies",
-    "Other Goods",
-    "Sporting Goods",
-    "Sales"
+    "Office & Craft",
+    "Hard Beverages",
+    "Floral",
+    "Beer",
+    "Liquor",
+    "Sales",
+    "Charcuterie",
+    "2024 ALDI Fan Favorites",
+    "Toys",
+    "Shop Now",
+    "Vegan",
+    "Organic",
+    "ALDI Finds (Limited Time)"
 ]
 
 def is_relative_url(string):
@@ -138,7 +155,6 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
         scroll_to_bottom_multiple_times(driver, 2, 50)
         time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
-        print(elements)
         for element in elements:
 
             image_url = ""
@@ -154,7 +170,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
             try:
                 img_element = element.find_element(By.TAG_NAME, "img")
-                image_url = img_element.get_dom_attribute("srcset").split(", ")[0]
+                image_url = img_element.get_attribute("srcset").split(", ")[0]
             except:
                 image_url = ""
             
@@ -184,7 +200,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             
             try:
                 product_link_element = element.find_element(By.TAG_NAME, "a")
-                product_link = product_link_element.get_dom_attribute("href")
+                product_link = product_link_element.get_attribute("href")
             except:
                 product_link = ""
 
@@ -218,12 +234,15 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 "122.3960",
                 "",
             ]
+            
+            products.append(record)
+            print(record)
 
             db_record = (
                 "https://instacart.com",
                 "https://instacart.com"+product_link,
                 "Instacart",
-                "Walmart",
+                "Aldi",
                 title,
                 price,
                 download_url,
@@ -234,20 +253,16 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             )
 
             insert_product_record(db_name, table_name, db_record)
-            
-            products.append(record)
-            print(record)
+
             section_id = section_id + 1
             if(section_id > 50):
                 break
         num = num + 1
         break
-    
-    driver.quit()
-    
+
     return products
 
-def get_walmart_products(db_name, table_name, store, current_time, prefix):
+def get_aldi_products(db_name, table_name, store, current_time, prefix):
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")

@@ -15,80 +15,61 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
+
 import sys
 import sqlite3
 
 sys.path.append("../..")
 from google_shopping_api import get_products, create_database_table
 
-base_url = "https://www.walmart.com"
+base_url = "https://www.costco.com"
 section_id = 1
 page = 1
 products = []
 product_links = []
 
 categories = [
-    "https://www.instacart.com/store/walmart/collections/n-great-value-19053",
-    "https://www.instacart.com/store/walmart/collections/produce",
-    "https://www.instacart.com/store/walmart/collections/meat-and-seafood",
-    "https://www.instacart.com/store/walmart/collections/snacks-and-candy",
-    "https://www.instacart.com/store/walmart/collections/frozen",
-    "https://www.instacart.com/store/walmart/collections/dairy",
-    "https://www.instacart.com/store/walmart/collections/household",
-    "https://www.instacart.com/store/walmart/collections/beverages",
-    "https://www.instacart.com/store/walmart/collections/pets",
-    "https://www.instacart.com/store/walmart/collections/baked-goods",
-    "https://www.instacart.com/store/walmart/collections/3095-prepared-foods",
-    "https://www.instacart.com/store/walmart/collections/personal-care",
-    "https://www.instacart.com/store/walmart/collections/3089-deli",
-    "https://www.instacart.com/store/walmart/collections/canned-goods",
-    "https://www.instacart.com/store/walmart/collections/electronics",
-    "https://www.instacart.com/store/walmart/collections/breakfast-foods",
-    "https://www.instacart.com/store/walmart/collections/health-care",
-    "https://www.instacart.com/store/walmart/collections/dry-goods-pasta",
-    "https://www.instacart.com/store/walmart/collections/oils-vinegars-spices",
-    "https://www.instacart.com/store/walmart/collections/condiments-sauces",
-    "https://www.instacart.com/store/walmart/collections/home-garden",
-    "https://www.instacart.com/store/walmart/collections/baking-essentials",
-    "https://www.instacart.com/store/walmart/collections/baby",
-    "https://www.instacart.com/store/walmart/collections/office-craft",
-    "https://www.instacart.com/store/walmart/collections/floral",
-    "https://www.instacart.com/store/walmart/collections/party-gifts",
-    "https://www.instacart.com/store/walmart/collections/3161-other-goods",
-    "https://www.instacart.com/store/walmart/collections/sports-outdoors",
-    "https://www.instacart.com/store/walmart/collections/dynamic_collection-sales"
+    "https://www.instacart.com/store/bjs/collections/snacks-and-candy",
+    "https://www.instacart.com/store/bjs/collections/beverages",
+    "https://www.instacart.com/store/bjs/collections/produce",
+    "https://www.instacart.com/store/bjs/collections/1365-pantry-gen-merch",
+    "https://www.instacart.com/store/bjs/collections/meat-and-seafood",
+    "https://www.instacart.com/store/bjs/collections/9859-deli-dairy",
+    "https://www.instacart.com/store/bjs/collections/frozen",
+    "https://www.instacart.com/store/bjs/collections/household",
+    "https://www.instacart.com/store/bjs/collections/baked-goods",
+    "https://www.instacart.com/store/bjs/collections/9886-paper-goods",
+    "https://www.instacart.com/store/bjs/collections/9904-cleaning-laundry",
+    "https://www.instacart.com/store/bjs/collections/9909-health-personal-care",
+    "https://www.instacart.com/store/bjs/collections/9809-home-goods",
+    "https://www.instacart.com/store/bjs/collections/pets",
+    "https://www.instacart.com/store/bjs/collections/electronics",
+    "https://www.instacart.com/store/bjs/collections/baby",
+    "https://www.instacart.com/store/bjs/collections/9929-other-goods",
+    "https://www.instacart.com/store/bjs/collections/dynamic_collection-sales",
+    "https://www.instacart.com/store/bjs/collections/n-fsa-hsa-28991",
 ]
 
 category_titles = [
-    "Great Value",
-    "Produce",
-    "Meat & Seafood",
     "Snacks & Candy",
-    "Frozen",
-    "Dairy & Eggs",
-    "Household",
     "Beverages",
-    "Pets",
+    "Produce",
+    "Pantry",
+    "Meat & Seafood",
+    "Deli & Dairy",
+    "Frozen",
+    "Household",
     "Bakery",
-    "Prepared Foods",
-    "Personal Care",
-    "Deli",
-    "Canned Goods & Soups",
+    "Paper Goods",
+    "Cleaning & Laundry",
+    "Health & Personal Care",
+    "Home Goods",
+    "Pets",
     "Electronics",
-    "Breakfast",
-    "Health Care",
-    "Dry Goods & Pasta",
-    "Oils, Vinegars, & Spices",
-    "Condiments & Sauces",
-    "Home & Garden",
-    "Baking Essentials",
     "Baby",
-    "Office & Craft",
-    "Floral",
-    "Party & Gift Supplies",
     "Other Goods",
-    "Sporting Goods",
-    "Sales"
+    "Sales",
+    "HSA/FSA",
 ]
 
 def is_relative_url(string):
@@ -138,7 +119,6 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
         scroll_to_bottom_multiple_times(driver, 2, 50)
         time.sleep(2)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
-        print(elements)
         for element in elements:
 
             image_url = ""
@@ -154,7 +134,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
             try:
                 img_element = element.find_element(By.TAG_NAME, "img")
-                image_url = img_element.get_dom_attribute("srcset").split(", ")[0]
+                image_url = img_element.get_attribute("srcset").split(", ")[0]
             except:
                 image_url = ""
             
@@ -184,7 +164,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             
             try:
                 product_link_element = element.find_element(By.TAG_NAME, "a")
-                product_link = product_link_element.get_dom_attribute("href")
+                product_link = product_link_element.get_attribute("href")
             except:
                 product_link = ""
 
@@ -223,7 +203,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 "https://instacart.com",
                 "https://instacart.com"+product_link,
                 "Instacart",
-                "Walmart",
+                "BJS",
                 title,
                 price,
                 download_url,
@@ -242,12 +222,10 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-    
-    driver.quit()
-    
+
     return products
 
-def get_walmart_products(db_name, table_name, store, current_time, prefix):
+def get_bjs_products(db_name, table_name, store, current_time, prefix):
     options = uc.ChromeOptions()
     # options.add_argument("--headless=new")  # Enable headless mode
     options.add_argument("--disable-gpu")
@@ -267,6 +245,7 @@ def get_walmart_products(db_name, table_name, store, current_time, prefix):
         os.mkdir(f"products/{current_time}/images")
     
     get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
+
 
 
 
