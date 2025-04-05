@@ -160,7 +160,7 @@
                     alert("Error: " + data.error);
                 } else {
                     // Redirect to the new table's page instead of just reloading
-                    window.location.href = `/products/${data.table_name}`;
+                    window.location.reload();
                 }
             })
             .catch(error => {
