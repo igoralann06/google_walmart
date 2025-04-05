@@ -152,8 +152,7 @@ def get_products(store, db_name, table_name, current_time, prefix, item_count):
         get_target_products(db_name, table_name, store, current_time, prefix)
     elif store == "walmart":
         get_walmart_products(db_name, table_name, store, current_time, prefix)
-    else:
-        return "success"
+    return "success"
 
 def clean_rating_count(value):
     """Convert rating count from string to an integer."""

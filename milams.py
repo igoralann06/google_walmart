@@ -254,7 +254,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-
+    driver.quit()
     return products
 
 def get_milams_products(db_name, table_name, store, current_time, prefix):
@@ -268,18 +268,14 @@ def get_milams_products(db_name, table_name, store, current_time, prefix):
     options.add_argument("--start-maximized")  # Debugging support
     driver = uc.Chrome(options=options)
     
-    try:
-        # Create directories if they don't exist
-        if not os.path.isdir("products"):
-            os.mkdir("products")
-        if not os.path.isdir(f"products/{current_time}"):
-            os.mkdir(f"products/{current_time}")
-        if not os.path.isdir(f"products/{current_time}/images"):
-            os.mkdir(f"products/{current_time}/images")
-        
-        get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
-    finally:
-        # Always close the driver, even if an error occurs
-        driver.quit()
+    # Create directories if they don't exist
+    if not os.path.isdir("products"):
+        os.mkdir("products")
+    if not os.path.isdir(f"products/{current_time}"):
+        os.mkdir(f"products/{current_time}")
+    if not os.path.isdir(f"products/{current_time}/images"):
+        os.mkdir(f"products/{current_time}/images")
+    
+    get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
 
 
