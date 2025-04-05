@@ -26,6 +26,10 @@ from walmart import get_records
 app = Flask(__name__)
 CORS(app)
 
+# Remove timeout limit
+app.config['TIMEOUT'] = None
+app.config['PERMANENT_SESSION_LIFETIME'] = None
+
 def create_database_table(db_name, table_name):
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
@@ -319,7 +323,12 @@ def get_products_api():
 if __name__ == "__main__":
     db_name = "product_data.db"
     create_database_table(db_name, "items_search")
-    app.run(host="0.0.0.0", port=5000 ,threaded=True,)
+    app.run(
+        host="0.0.0.0", 
+        port=5000,
+        threaded=True,
+        request_timeout=None  # Disable request timeout
+    )
 
 
 
