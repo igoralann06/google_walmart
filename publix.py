@@ -153,9 +153,9 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
     for category in categories:
         driver.get(category)
-        driver.execute_script("document.body.style.zoom='40%'")
+        driver.execute_script("document.body.style.zoom='80%'")
         scroll_to_bottom_multiple_times(driver, 2, 50)
-        time.sleep(2)
+        time.sleep(5)
         elements = driver.find_elements(By.XPATH, "//div[@aria-label='Product']")
         for element in elements:
 
@@ -260,7 +260,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-    driver.quit()
+    # driver.quit()
     return products
 
 def get_publix_products(db_name, table_name, store, current_time, prefix):
@@ -283,6 +283,6 @@ def get_publix_products(db_name, table_name, store, current_time, prefix):
         os.mkdir(f"products/{current_time}/images")
     
     get_product_list(driver=driver, db_name=db_name, table_name=table_name, current_time=current_time, prefix=prefix)
-
+    driver.quit()
 
 
