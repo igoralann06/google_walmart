@@ -259,7 +259,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
                 break
         num = num + 1
         break
-    # driver.quit()
+    driver.quit()
     return products
 
 def get_aldi_products(db_name, table_name, store, current_time, prefix):
