@@ -256,10 +256,10 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             insert_product_record(db_name, table_name, db_record)
 
             section_id = section_id + 1
-            if(section_id > 50):
-                break
+            # if(section_id > 50):
+            #     break
         num = num + 1
-        break
+        # break
     
     return products
 
