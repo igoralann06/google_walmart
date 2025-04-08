@@ -238,10 +238,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
             products.append(record)
             print(record)
             section_id = section_id + 1
-            if(section_id > 50):
-                break
         num = num + 1
-        break
     
     # driver.quit()
     
