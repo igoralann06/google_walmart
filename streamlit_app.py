@@ -444,6 +444,10 @@ def main():
         if table_names:
             selected_table = st.selectbox("Select a previous search", table_names)
     
+    # Initialize session state for pagination
+    if 'page' not in st.session_state:
+        st.session_state.page = 1
+    
     # Main content area
     if search_button and search_query:
         with st.spinner("Searching products..."):
@@ -456,11 +460,38 @@ def main():
             create_database_table(db_name, table_name)
             get_products(selected_store, db_name, table_name, current_time, search_query, 0)
             
-            # Display results
+            # Display results with pagination
             products = get_products_from_table(db_name, table_name)
             if products:
                 st.header("Search Results")
-                for product in products:
+                
+                # Pagination controls
+                items_per_page = 12
+                total_pages = (len(products) + items_per_page - 1) // items_per_page
+                
+                # Display current page number and total pages
+                st.write(f"Page {st.session_state.page} of {total_pages}")
+                
+                # Pagination buttons
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col1:
+                    if st.session_state.page > 1:
+                        if st.button("Previous Page"):
+                            st.session_state.page -= 1
+                            st.experimental_rerun()
+                with col2:
+                    st.write("")  # Empty column for spacing
+                with col3:
+                    if st.session_state.page < total_pages:
+                        if st.button("Next Page"):
+                            st.session_state.page += 1
+                            st.experimental_rerun()
+                
+                # Display products for current page
+                start_idx = (st.session_state.page - 1) * items_per_page
+                end_idx = min(start_idx + items_per_page, len(products))
+                
+                for product in products[start_idx:end_idx]:
                     display_product_card(product, db_name)
                 
                 # Add download button
@@ -479,12 +510,39 @@ def main():
             else:
                 st.warning("No products found for the given search query.")
     
-    # Display selected previous search
+    # Display selected previous search with pagination
     if 'selected_table' in locals() and selected_table:
         products = get_products_from_table(db_name, selected_table)
         if products:
             st.header(f"Previous Search: {selected_table}")
-            for product in products:
+            
+            # Pagination controls for previous search
+            items_per_page = 12
+            total_pages = (len(products) + items_per_page - 1) // items_per_page
+            
+            # Display current page number and total pages
+            st.write(f"Page {st.session_state.page} of {total_pages}")
+            
+            # Pagination buttons
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                if st.session_state.page > 1:
+                    if st.button("Previous Page", key="prev_prev"):
+                        st.session_state.page -= 1
+                        st.experimental_rerun()
+            with col2:
+                st.write("")  # Empty column for spacing
+            with col3:
+                if st.session_state.page < total_pages:
+                    if st.button("Next Page", key="next_prev"):
+                        st.session_state.page += 1
+                        st.experimental_rerun()
+            
+            # Display products for current page
+            start_idx = (st.session_state.page - 1) * items_per_page
+            end_idx = min(start_idx + items_per_page, len(products))
+            
+            for product in products[start_idx:end_idx]:
                 display_product_card(product, db_name)
 
 if __name__ == "__main__":
