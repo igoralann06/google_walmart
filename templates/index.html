@@ -45,6 +45,14 @@
                 <button id="auto" onclick="autoParallel()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Auto</button>
             </div>
         
+            <!-- Google Results Section -->
+            <div id="googleResultsSection" class="mb-8 hidden">
+                <h2 class="text-xl font-bold mb-4">Google Shopping Results</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="googleResultsGrid">
+                    <!-- Google results will be inserted here -->
+                </div>
+            </div>
+
             <!-- Grid Search Bar -->
             <input type="text" id="gridSearch" onkeyup="filterGrid()" 
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
@@ -196,7 +204,56 @@
 
         function compareProduct(productName, platform) {
             if (platform === 'google') {
-                window.open(`http://localhost:3000?name=${encodeURIComponent(productName)}`, '_blank');
+                const loadingModal = document.getElementById('loadingModal');
+                loadingModal.classList.remove('hidden');
+                
+                fetch(`/get_products?store=${encodeURIComponent(productName)}&platform=${platform}&item_count=5`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Show the Google results section
+                        const googleSection = document.getElementById('googleResultsSection');
+                        googleSection.classList.remove('hidden');
+                        
+                        // Clear previous results
+                        const googleGrid = document.getElementById('googleResultsGrid');
+                        googleGrid.innerHTML = '';
+                        
+                        // Display each product in a card
+                        data.response.forEach(product => {
+                            const card = document.createElement('div');
+                            card.className = 'bg-white p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300';
+                            card.innerHTML = `
+                                <div class="relative">
+                                    <a href="${product[2]}" target="_blank" class="block">
+                                        <img src="${product[7]}" alt="${product[5]}" class="w-full h-48 object-cover rounded-md">
+                                    </a>
+                                    <div class="absolute top-2 right-2">
+                                        <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">Google</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <h3 class="text-lg font-semibold text-gray-800">${product[5]}</h3>
+                                    <p class="text-blue-600 font-bold text-xl mt-2">${product[6]}</p>
+                                    <p class="text-sm text-gray-600 mt-1">Store: ${product[4]}</p>
+                                    ${product[9] ? `<div class="flex items-center mt-2">
+                                        <span class="text-yellow-400">★</span>
+                                        <span class="text-sm text-gray-600 ml-1">${product[9]}</span>
+                                    </div>` : ''}
+                                    ${product[10] ? `<p class="text-sm text-gray-500 mt-1">${product[10]} reviews</p>` : ''}
+                                </div>
+                                <div class="mt-4">
+                                    <a href="${product[2]}" target="_blank" 
+                                        class="block w-full text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                        View Product
+                                    </a>
+                                </div>
+                            `;
+                            googleGrid.appendChild(card);
+                        });
+                    })
+                    .finally(() => {
+                        loadingModal.classList.add('hidden');
+                    });
                 return;
             }
 
@@ -208,15 +265,15 @@
             const loadingModal = document.getElementById('loadingModal');
             loadingModal.classList.remove('hidden');
             
-            fetch(`/get_products?store=${encodeURIComponent(productName)}&platform=${platform}&item_count=20`)
-            .then(response => response.json())
-            .then(data => {
-                alert("Search completed");
-                document.location.reload();
-            })
-            .finally(() => {
-                loadingModal.classList.add('hidden');
-            });
+            fetch(`/get_products?store=${encodeURIComponent(productName)}&platform=${platform}&item_count=5`)
+                .then(response => response.json())
+                .then(data => {
+                    alert("Search completed");
+                    document.location.reload();
+                })
+                .finally(() => {
+                    loadingModal.classList.add('hidden');
+                });
         }
 
         function autoParallel() {

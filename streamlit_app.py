@@ -1,0 +1,491 @@
+import streamlit as st
+import sqlite3
+import pandas as pd
+from datetime import datetime
+import os
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+import re
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import undetected_chromedriver as uc
+from selenium.webdriver.chrome.options import Options
+import base64
+from PIL import Image
+import io
+import threading
+import requests
+from pathlib import Path
+import imghdr
+
+from walmart import get_walmart_products
+from aldi import get_aldi_products
+from bjs import get_bjs_products
+from costco import get_costco_products
+from milams import get_milams_products
+from publix import get_publix_products
+from restaurant_depot import get_restaurant_depot_products
+from sabor_tropical import get_sabor_tropical_products
+from sams import get_sams_products
+from target import get_target_products
+from google_shopping_api import get_products as get_google_products
+
+# Available stores
+AVAILABLE_STORES = [
+    "aldi",
+    "bjs",
+    "costco",
+    "milams",
+    "publix",
+    "restaurant_depot",
+    "sabor_tropical",
+    "sams",
+    "target",
+    "walmart"
+]
+
+def create_database_table(db_name, table_name):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        id INTEGER PRIMARY KEY,
+        store_page_link TEXT,
+        product_item_page_link TEXT,
+        platform TEXT,
+        store TEXT,
+        product_name TEXT,
+        price TEXT,
+        image_file_name TEXT,
+        image_link TEXT,
+        product_rating TEXT,
+        product_review_number TEXT,
+        score TEXT
+    );
+    """
+    cursor.execute(create_table_query)
+    conn.commit()
+    conn.close()
+
+def get_products(store, db_name, table_name, current_time, prefix, item_count):
+    if store == "aldi":
+        get_aldi_products(db_name, table_name, store, current_time, prefix)
+    elif store == "bjs":
+        get_bjs_products(db_name, table_name, store, current_time, prefix)
+    elif store == "costco":
+        get_costco_products(db_name, table_name, store, current_time, prefix)
+    elif store == "milams":
+        get_milams_products(db_name, table_name, store, current_time, prefix)
+    elif store == "publix":
+        get_publix_products(db_name, table_name, store, current_time, prefix)
+    elif store == "restaurant_depot":
+        get_restaurant_depot_products(db_name, table_name, store, current_time, prefix)
+    elif store == "sabor_tropical":
+        get_sabor_tropical_products(db_name, table_name, store, current_time, prefix)
+    elif store == "sams":
+        get_sams_products(db_name, table_name, store, current_time, prefix)
+    elif store == "target":
+        get_target_products(db_name, table_name, store, current_time, prefix)
+    elif store == "walmart":
+        get_walmart_products_from_api(db_name, table_name, current_time, prefix, item_count)
+    return "success"
+
+def get_walmart_products_from_api(db_name, table_name, current_time, prefix, item_count):
+    options = uc.ChromeOptions()
+    options.add_argument("--disable-gpu")
+    driver = uc.Chrome(options=options)
+    
+    try:
+        section_id = 1
+        products = []
+        
+        driver.get(f"https://www.walmart.com/search?q={prefix}")
+        time.sleep(2)
+        elements = driver.find_elements(By.XPATH, '//*[@role="group"]')
+        num = 0
+        
+        for element in elements:
+            if num >= item_count:
+                break
+
+            image_url = ""
+            title = ""
+            rating = ""
+            rating_count = ""
+            product_link = ""
+            price = ""
+            download_url = ""
+            store = "Walmart"
+
+            driver.execute_script("arguments[0].scrollIntoView();", element)
+            time.sleep(3)
+
+            try:
+                img_element = element.find_element(By.TAG_NAME, "img")
+                image_url = img_element.get_dom_attribute("src")
+            except:
+                image_url = ""
+            
+            if image_url:
+                try:
+                    if image_url.startswith("http"):
+                        response = requests.get(image_url)
+                        if response.status_code == 200:
+                            image_type = imghdr.what(None, response.content) or "jpg"
+                            download_url = f"products/{current_time}_{prefix}/images/{prefix}{section_id}.{image_type}"
+                            
+                            os.makedirs(os.path.dirname(download_url), exist_ok=True)
+                            with open(download_url, 'wb') as file:
+                                file.write(response.content)
+
+                    elif image_url.startswith("data:image"):
+                        match = re.match(r"data:image/(\w+);base64,(.*)", image_url)
+                        if match:
+                            image_type, base64_data = match.groups()
+                            image_type = image_type if image_type else "jpg"
+                            
+                            download_url = f"products/{current_time}_{prefix}/images/{prefix}{section_id}.{image_type}"
+                            
+                            os.makedirs(os.path.dirname(download_url), exist_ok=True)
+                            with open(download_url, 'wb') as file:
+                                file.write(base64.b64decode(base64_data))
+                            image_url = "Raw image"
+
+                except Exception as e:
+                    print("Error saving image:", e)
+
+            try:
+                title_element = element.find_element(By.CLASS_NAME, "w_V_DM")
+                title = title_element.text.strip()
+            except:
+                title = ""
+            
+            try:
+                product_link_element = element.find_element(By.TAG_NAME, "a")
+                product_link = product_link_element.get_dom_attribute("href")
+            except:
+                product_link = ""
+
+            try:
+                price_element = element.find_element(By.CLASS_NAME, "w_iUH7")
+                price = price_element.text.strip()
+            except:
+                price = ""
+
+            db_record = (
+                "https://walmart.com",
+                "https://www.walmart.com" + product_link,
+                "Walmart",
+                store,
+                title,
+                price,
+                download_url,
+                image_url,
+                rating,
+                rating_count,
+                ""
+            )
+
+            insert_product_record(db_name, table_name, db_record)
+            section_id += 1
+            num += 1
+
+    except Exception as e:
+        st.error(f"Error searching Walmart: {str(e)}")
+    finally:
+        driver.quit()
+
+def insert_product_record(db_name, table_name, record):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    
+    insert_query = f"""
+    INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    
+    cursor.execute(insert_query, record)
+    conn.commit()
+    conn.close()
+
+def get_table_names(db_name):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = cursor.fetchall()
+    conn.close()
+    return [table[0] for table in tables]
+
+def get_products_from_table(db_name, table_name, page=1, per_page=12):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    
+    # First check if table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    if not cursor.fetchone():
+        conn.close()
+        return None
+        
+    offset = (page - 1) * per_page
+    
+    cursor.execute(f"""
+        SELECT * 
+        FROM {table_name}
+        WHERE price IS NOT NULL AND price != ''
+        ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
+        LIMIT {per_page} OFFSET {offset}
+    """)
+    products = cursor.fetchall()
+    conn.close()
+    return products
+
+def compare_on_google(product_name, db_name, table_name, current_time):
+    """Compare a product on Google Shopping"""
+    with st.spinner("Searching Google Shopping..."):
+        options = uc.ChromeOptions()
+        options.add_argument("--disable-gpu")
+        driver = uc.Chrome(options=options)
+        
+        try:
+            # Create a new table for Google comparison results
+            create_database_table(db_name, table_name)
+            get_google_products(driver, product_name, db_name, table_name, current_time, "google_", 5)
+            
+            # Display comparison results in card format
+            st.subheader(f"Google Shopping Results for: {product_name}")
+            products = get_products_from_table(db_name, table_name)
+            if products:
+                # Display products in a single column
+                for product in products:
+                    # Create a card-like container
+                    st.markdown("---")  # Separator between cards
+                    
+                    # Display product image
+                    image_path = product[7]  # image_file_name
+                    image_url = product[8]   # image_link
+                    
+                    if not display_image(image_path, image_url):
+                        st.warning("No image available")
+                    
+                    # Display product details
+                    st.markdown(f"**{product[5]}**")  # product_name
+                    st.markdown(f"**Price:** {product[6]}")  # price
+                    st.markdown(f"**Store:** {product[4]}")  # store
+                    
+                    if product[9]:  # product_rating
+                        st.markdown(f"**Rating:** {product[9]}")
+                    if product[10]:  # product_review_number
+                        st.markdown(f"**Reviews:** {product[10]}")
+                    
+                    # Add product page link
+                    if product[2]:  # product_item_page_link
+                        st.markdown(f"[Product Page]({product[2]})")
+            else:
+                st.warning("No comparison results found on Google Shopping.")
+        except Exception as e:
+            st.error(f"Error comparing on Google: {str(e)}")
+        finally:
+            driver.quit()
+
+def compare_on_walmart(product_name, db_name, table_name, current_time):
+    """Compare a product on Walmart"""
+    with st.spinner("Searching Walmart..."):
+        options = uc.ChromeOptions()
+        options.add_argument("--disable-gpu")
+        driver = uc.Chrome(options=options)
+        
+        try:
+            # Create a new table for Walmart comparison results
+            create_database_table(db_name, table_name)
+            get_walmart_products_from_api(db_name, table_name, current_time, product_name, 5)
+            
+            # Display comparison results in card format
+            st.subheader(f"Walmart Results for: {product_name}")
+            products = get_products_from_table(db_name, table_name)
+            if products:
+                # Display products in a single column
+                for product in products:
+                    # Create a card-like container
+                    st.markdown("---")  # Separator between cards
+                    
+                    # Display product image
+                    image_path = product[7]  # image_file_name
+                    image_url = product[8]   # image_link
+                    
+                    if not display_image(image_path, image_url):
+                        st.warning("No image available")
+                    
+                    # Display product details
+                    st.markdown(f"**{product[5]}**")  # product_name
+                    st.markdown(f"**Price:** {product[6]}")  # price
+                    st.markdown(f"**Store:** {product[4]}")  # store
+                    
+                    if product[9]:  # product_rating
+                        st.markdown(f"**Rating:** {product[9]}")
+                    if product[10]:  # product_review_number
+                        st.markdown(f"**Reviews:** {product[10]}")
+                    
+                    # Add product page link
+                    if product[2]:  # product_item_page_link
+                        st.markdown(f"[Product Page]({product[2]})")
+            else:
+                st.warning("No comparison results found on Walmart.")
+        except Exception as e:
+            st.error(f"Error comparing on Walmart: {str(e)}")
+        finally:
+            driver.quit()
+
+def display_image(image_path, image_url):
+    """Display image from local path, URL, or base64 data"""
+    try:
+        # First try to load from local path
+        if image_path and os.path.exists(image_path):
+            image = Image.open(image_path)
+            st.image(image, use_container_width=True)
+            return True
+        # If local path fails, try URL or base64
+        elif image_url:
+            if image_url.startswith('data:image'):
+                # Handle base64 encoded image
+                try:
+                    # Extract the base64 data
+                    base64_data = image_url.split(',')[1]
+                    # Decode the base64 data
+                    image_data = base64.b64decode(base64_data)
+                    # Create an image from the decoded data
+                    image = Image.open(io.BytesIO(image_data))
+                    st.image(image, use_container_width=True)
+                    return True
+                except Exception as e:
+                    st.error(f"Error decoding base64 image: {str(e)}")
+                    return False
+            else:
+                # Handle regular URL
+                response = requests.get(image_url)
+                if response.status_code == 200:
+                    image = Image.open(io.BytesIO(response.content))
+                    st.image(image, use_container_width=True)
+                    return True
+    except Exception as e:
+        st.error(f"Error loading image: {str(e)}")
+    return False
+
+def display_product_card(product, db_name):
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        # Display product image
+        image_path = product[7]  # image_file_name
+        image_url = product[8]   # image_link
+        
+        if not display_image(image_path, image_url):
+            st.warning("No image available")
+    
+    with col2:
+        # Display product details
+        st.markdown(f"### {product[5]}")  # product_name
+        st.markdown(f"**Price:** {product[6]}")  # price
+        st.markdown(f"**Store:** {product[4]}")  # store
+        
+        if product[9]:  # product_rating
+            st.markdown(f"**Rating:** {product[9]}")
+        if product[10]:  # product_review_number
+            st.markdown(f"**Reviews:** {product[10]}")
+        
+        # Add product page link
+        if product[2]:  # product_item_page_link
+            st.markdown(f"[Product Page]({product[2]})")
+        
+        # Add comparison buttons
+        col3, col4 = st.columns(2)
+        with col3:
+            if st.button("Compare on Google", key=f"google_{product[0]}"):
+                current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                table_name = f"google_comparison_{current_time}"
+                compare_on_google(product[5], db_name, table_name, current_time)
+        with col4:
+            if st.button("Compare on Walmart", key=f"walmart_{product[0]}"):
+                current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                table_name = f"walmart_comparison_{current_time}"
+                compare_on_walmart(product[5], db_name, table_name, current_time)
+    
+    st.markdown("---")  # Add a separator between products
+
+def display_google_search_results(db_name, table_name):
+    """Display Google search results in a dedicated section"""
+    products = get_products_from_table(db_name, table_name)
+    if products:
+        st.subheader("Google Shopping Results")
+        for product in products:
+            display_product_card(product, db_name)
+    else:
+        st.warning("No Google search results found.")
+
+def main():
+    st.set_page_config(page_title="Product Search", layout="wide")
+    st.title("Product Search Application")
+    
+    # Create products directory if it doesn't exist
+    Path("products").mkdir(exist_ok=True)
+    
+    # Sidebar for store selection and search
+    with st.sidebar:
+        st.header("Search Options")
+        selected_store = st.selectbox("Select Store", AVAILABLE_STORES)
+        search_query = st.text_input("Search Query")
+        search_button = st.button("Search")
+        
+        # Display previous searches
+        st.header("Previous Searches")
+        db_name = "product_data.db"
+        table_names = get_table_names(db_name)
+        if table_names:
+            selected_table = st.selectbox("Select a previous search", table_names)
+    
+    # Main content area
+    if search_button and search_query:
+        with st.spinner("Searching products..."):
+            # Create a unique table name based on store and timestamp
+            current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+            table_name = f"{selected_store}_{current_time}"
+            db_name = "product_data.db"
+            
+            # Create table and get products
+            create_database_table(db_name, table_name)
+            get_products(selected_store, db_name, table_name, current_time, search_query, 0)
+            
+            # Display results
+            products = get_products_from_table(db_name, table_name)
+            if products:
+                st.header("Search Results")
+                for product in products:
+                    display_product_card(product, db_name)
+                
+                # Add download button
+                df = pd.DataFrame(products, columns=[
+                    "ID", "Store Page Link", "Product Page Link", "Platform", "Store",
+                    "Product Name", "Price", "Image File", "Image Link", "Rating",
+                    "Review Count", "Score"
+                ])
+                csv = df.to_csv(index=False)
+                st.download_button(
+                    label="Download results as CSV",
+                    data=csv,
+                    file_name=f"{selected_store}_products_{current_time}.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.warning("No products found for the given search query.")
+    
+    # Display selected previous search
+    if 'selected_table' in locals() and selected_table:
+        products = get_products_from_table(db_name, selected_table)
+        if products:
+            st.header(f"Previous Search: {selected_table}")
+            for product in products:
+                display_product_card(product, db_name)
+
+if __name__ == "__main__":
+    main() 
