@@ -408,7 +408,10 @@ def display_image(image_path, image_url):
             return True
         # If local path fails, try URL or base64
         elif image_url:
-            if image_url.startswith('data:image'):
+            if image_url == "Base64 image data":
+                st.warning("Image is in base64 format and cannot be displayed directly")
+                return False
+            elif image_url.startswith('data:image'):
                 # Handle base64 encoded image
                 try:
                     # Extract the base64 data
