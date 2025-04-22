@@ -532,21 +532,18 @@ def display_product_card(product, db_name):
                 if image_path and os.path.exists(image_path):
                     with st.spinner("Matching image with Google Lens..."):
                         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        matched_image = match_image_with_google_lens(image_path, current_time)
-                        if matched_image:
-                            st.subheader("Similar Image Found:")
-                            if matched_image.startswith("data:image"):
-                                # Handle base64 image
+                        matched_images = match_image_with_google_lens(image_path, current_time)
+                        if matched_images:
+                            st.subheader("Similar Images Found:")
+                            for matched_image_path in matched_images:
                                 try:
-                                    base64_data = matched_image.split(',')[1]
-                                    image_data = base64.b64decode(base64_data)
-                                    image = Image.open(io.BytesIO(image_data))
-                                    st.image(image, caption="Matched Image")
+                                    if os.path.exists(matched_image_path):
+                                        image = Image.open(matched_image_path)
+                                        st.image(image, caption="Matched Image", use_container_width=True)
+                                    else:
+                                        st.warning(f"Image file not found: {matched_image_path}")
                                 except Exception as e:
                                     st.error(f"Error displaying matched image: {str(e)}")
-                            else:
-                                # Handle URL image
-                                st.image(matched_image, caption="Matched Image")
                         else:
                             st.warning("No similar images found.")
                 else:
