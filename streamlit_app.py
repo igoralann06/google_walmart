@@ -508,17 +508,17 @@ def display_product_card(product, db_name):
                         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
                         matched_images = match_image_with_google_lens(image_path, current_time)
                         if matched_images:
-                            st.subheader("Similar Images Found:")
-                            # Create columns for image display - 4 images per row
-                            cols = st.columns(4)
-                            col_idx = 0
-                            
-                            for img_url in matched_images:
-                                if not img_url or img_url == "data:,":  # Skip empty images
-                                    continue
-                                    
-                                try:
-                                    with cols[col_idx]:
+                            # Create a container for matched images outside the column
+                            with st.container():
+                                st.subheader("Similar Images Found:")
+                                valid_images = []
+                                
+                                # First, collect all valid images
+                                for img_url in matched_images:
+                                    if not img_url or img_url == "data:,":  # Skip empty images
+                                        continue
+                                        
+                                    try:
                                         if img_url.startswith("data:image"):
                                             # Handle base64 image
                                             try:
@@ -530,7 +530,7 @@ def display_product_card(product, db_name):
                                                     ratio = 100 / max(image.size)
                                                     new_size = tuple(int(dim * ratio) for dim in image.size)
                                                     image = image.resize(new_size, Image.Resampling.LANCZOS)
-                                                st.image(image, use_container_width=True)
+                                                valid_images.append(image)
                                             except:
                                                 continue
                                         else:
@@ -544,13 +544,18 @@ def display_product_card(product, db_name):
                                                         ratio = 100 / max(image.size)
                                                         new_size = tuple(int(dim * ratio) for dim in image.size)
                                                         image = image.resize(new_size, Image.Resampling.LANCZOS)
-                                                    st.image(image, use_container_width=True)
+                                                    valid_images.append(image)
                                             except:
                                                 continue
-                                    
-                                    col_idx = (col_idx + 1) % 4  # Move to next column
-                                except Exception as e:
-                                    continue
+                                    except Exception as e:
+                                        continue
+                                
+                                # Display valid images in rows of 4
+                                for i in range(0, len(valid_images), 4):
+                                    cols = st.columns(4)
+                                    for j in range(4):
+                                        if i + j < len(valid_images):
+                                            cols[j].image(valid_images[i + j], use_container_width=True)
                         else:
                             st.warning("No similar images found.")
                 else:
