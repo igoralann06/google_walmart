@@ -92,10 +92,14 @@ def get_products(store, db_name, table_name, current_time, prefix, item_count):
         get_walmart_products_from_api(db_name, table_name, current_time, prefix, item_count)
     return "success"
 
-def get_walmart_products_from_api(db_name, table_name, current_time, prefix, item_count):
-    options = uc.ChromeOptions()
-    options.add_argument("--disable-gpu")
-    driver = uc.Chrome(options=options)
+def get_walmart_products_from_api(db_name, table_name, current_time, prefix, item_count, driver=None):
+    if driver is None:
+        options = uc.ChromeOptions()
+        options.add_argument("--disable-gpu")
+        driver = uc.Chrome(options=options)
+        should_quit_driver = True
+    else:
+        should_quit_driver = False
     
     try:
         section_id = 1
@@ -195,7 +199,8 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
     except Exception as e:
         st.error(f"Error searching Walmart: {str(e)}")
     finally:
-        driver.quit()
+        if should_quit_driver:
+            driver.quit()
 
 def insert_product_record(db_name, table_name, record):
     conn = sqlite3.connect(db_name)
@@ -306,7 +311,7 @@ def compare_on_walmart(product_name, db_name, table_name, current_time):
         try:
             # Create a new table for Walmart comparison results
             create_database_table(db_name, table_name)
-            get_walmart_products_from_api(db_name, table_name, current_time, product_name, 5)
+            get_walmart_products_from_api(db_name, table_name, current_time, product_name, 5, driver)
             
             # Display comparison results in card format
             st.subheader(f"Walmart Results for: {product_name}")
