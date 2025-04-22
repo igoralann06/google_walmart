@@ -216,7 +216,8 @@ def get_table_names(db_name):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
     conn.close()
-    return [table[0] for table in tables]
+    # Return table names in reverse order (newest first)
+    return sorted([table[0] for table in tables], reverse=True)
 
 def get_products_from_table(db_name, table_name, page=1, per_page=12):
     conn = sqlite3.connect(db_name)
@@ -228,8 +229,14 @@ def get_products_from_table(db_name, table_name, page=1, per_page=12):
         conn.close()
         return None
         
+    # Get total count of records
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    total_records = cursor.fetchone()[0]
+    
+    # Calculate offset
     offset = (page - 1) * per_page
     
+    # Get paginated results
     cursor.execute(f"""
         SELECT * 
         FROM {table_name}
@@ -239,7 +246,7 @@ def get_products_from_table(db_name, table_name, page=1, per_page=12):
     """)
     products = cursor.fetchall()
     conn.close()
-    return products
+    return products, total_records
 
 def compare_on_google(product_name, db_name, table_name, current_time):
     """Compare a product on Google Shopping"""
@@ -372,6 +379,61 @@ def display_image(image_path, image_url):
         st.error(f"Error loading image: {str(e)}")
     return False
 
+def match_image_with_google_lens(image_path, current_time):
+    """Match image using Google Lens"""
+    try:
+        # Set up Chrome WebDriver
+        options = uc.ChromeOptions()
+        options.add_argument("--start-maximized")
+        driver = uc.Chrome(options=options)
+
+        # Create directory for results if it doesn't exist
+        result_dir = f"products/{current_time}"
+        os.makedirs(result_dir, exist_ok=True)
+
+        # Get absolute path of the image
+        absolute_path = os.path.abspath(image_path)
+        
+        # Open Google Images
+        driver.get("https://www.google.com/imghp")
+        time.sleep(2)
+
+        # Click the "Search by Image" button (Google Lens icon)
+        lens_button = driver.find_element(By.XPATH, "//div[@aria-label='Search by image']")
+        lens_button.click()
+        time.sleep(2)
+
+        # Upload Image
+        upload_tab = driver.find_element(By.XPATH, "//span[text()='upload a file  ']")
+        upload_tab.click()
+        time.sleep(2)
+
+        # Upload the file
+        file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
+        file_input.send_keys(absolute_path)
+        time.sleep(5)  # Wait for results to load
+
+        # Get image results
+        results = driver.find_elements(By.TAG_NAME, "img")
+        search_results = [result.get_attribute('src') for result in results]
+
+        # Store results
+        matched_images = []
+        for idx, img_url in enumerate(search_results):
+            if idx > 2:  # Skip first 3 results as they're usually UI elements
+                if img_url and (img_url.startswith("http") or img_url.startswith("data:image")):
+                    matched_images.append(img_url)
+                    break  # Get only the first valid result
+
+        driver.quit()
+        return matched_images[0] if matched_images else None
+
+    except Exception as e:
+        st.error(f"Error matching image: {str(e)}")
+        if 'driver' in locals():
+            driver.quit()
+        return None
+
 def display_product_card(product, db_name):
     col1, col2 = st.columns([1, 3])
     
@@ -399,7 +461,7 @@ def display_product_card(product, db_name):
             st.markdown(f"[Product Page]({product[2]})")
         
         # Add comparison buttons
-        col3, col4 = st.columns(2)
+        col3, col4, col5 = st.columns(3)
         with col3:
             if st.button("Compare on Google", key=f"google_{product[0]}"):
                 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -410,6 +472,30 @@ def display_product_card(product, db_name):
                 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
                 table_name = f"walmart_comparison_{current_time}"
                 compare_on_walmart(product[5], db_name, table_name, current_time)
+        with col5:
+            if st.button("Match Images", key=f"match_{product[0]}"):
+                if image_path and os.path.exists(image_path):
+                    with st.spinner("Matching image with Google Lens..."):
+                        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        matched_image = match_image_with_google_lens(image_path, current_time)
+                        if matched_image:
+                            st.subheader("Similar Image Found:")
+                            if matched_image.startswith("data:image"):
+                                # Handle base64 image
+                                try:
+                                    base64_data = matched_image.split(',')[1]
+                                    image_data = base64.b64decode(base64_data)
+                                    image = Image.open(io.BytesIO(image_data))
+                                    st.image(image, caption="Matched Image")
+                                except Exception as e:
+                                    st.error(f"Error displaying matched image: {str(e)}")
+                            else:
+                                # Handle URL image
+                                st.image(matched_image, caption="Matched Image")
+                        else:
+                            st.warning("No similar images found.")
+                else:
+                    st.error("No image available for matching.")
     
     st.markdown("---")  # Add a separator between products
 
@@ -430,120 +516,121 @@ def main():
     # Create products directory if it doesn't exist
     Path("products").mkdir(exist_ok=True)
     
-    # Sidebar for store selection and search
+    # Initialize session state for pagination
+    if 'page' not in st.session_state:
+        st.session_state.page = 1
+    
+    # Sidebar
     with st.sidebar:
-        st.header("Search Options")
-        selected_store = st.selectbox("Select Store", AVAILABLE_STORES)
-        search_query = st.text_input("Search Query")
-        search_button = st.button("Search")
-        
-        # Display previous searches
+        # Display previous searches at the top
         st.header("Previous Searches")
         db_name = "product_data.db"
         table_names = get_table_names(db_name)
         if table_names:
             selected_table = st.selectbox("Select a previous search", table_names)
-    
-    # Initialize session state for pagination
-    if 'page' not in st.session_state:
-        st.session_state.page = 1
+        
+        # Search options below previous searches
+        st.header("Search Options")
+        selected_store = st.selectbox("Select Store", AVAILABLE_STORES)
+        search_button = st.button("Search")
     
     # Main content area
-    if search_button and search_query:
-        with st.spinner("Searching products..."):
-            # Create a unique table name based on store and timestamp
-            current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            table_name = f"{selected_store}_{current_time}"
-            db_name = "product_data.db"
-            
-            # Create table and get products
-            create_database_table(db_name, table_name)
-            get_products(selected_store, db_name, table_name, current_time, search_query, 0)
-            
-            # Display results with pagination
-            products = get_products_from_table(db_name, table_name)
-            if products:
-                st.header("Search Results")
+    if search_button:
+        try:
+            with st.spinner("Searching products..."):
+                # Create a unique table name based on store and timestamp
+                current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                table_name = f"{selected_store}_{current_time}"
+                db_name = "product_data.db"
                 
-                # Pagination controls
+                # Create table and get products
+                create_database_table(db_name, table_name)
+                get_products(selected_store, db_name, table_name, current_time, "", 0)
+                
+                # Display results with pagination
+                products, total_records = get_products_from_table(db_name, table_name, st.session_state.page)
+                if products:
+                    st.header("Search Results")
+                    
+                    # Pagination controls
+                    items_per_page = 12
+                    total_pages = (total_records + items_per_page - 1) // items_per_page
+                    
+                    # Display current page number and total pages
+                    st.write(f"Page {st.session_state.page} of {total_pages} (Total Records: {total_records})")
+                    
+                    # Pagination buttons
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col1:
+                        if st.session_state.page > 1:
+                            if st.button("Previous Page"):
+                                st.session_state.page -= 1
+                                st.rerun()
+                    with col2:
+                        st.write("")  # Empty column for spacing
+                    with col3:
+                        if st.session_state.page < total_pages:
+                            if st.button("Next Page"):
+                                st.session_state.page += 1
+                                st.rerun()
+                    
+                    # Display products for current page
+                    for product in products:
+                        display_product_card(product, db_name)
+                    
+                    # Add download button
+                    all_products, _ = get_products_from_table(db_name, table_name, 1, total_records)
+                    df = pd.DataFrame(all_products, columns=[
+                        "ID", "Store Page Link", "Product Page Link", "Platform", "Store",
+                        "Product Name", "Price", "Image File", "Image Link", "Rating",
+                        "Review Count", "Score"
+                    ])
+                    csv = df.to_csv(index=False)
+                    st.download_button(
+                        label="Download results as CSV",
+                        data=csv,
+                        file_name=f"{selected_store}_products_{current_time}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("No products found.")
+        except Exception as e:
+            st.error(f"Error during search: {str(e)}")
+    
+    # Display selected previous search with pagination
+    if 'selected_table' in locals() and selected_table:
+        try:
+            products, total_records = get_products_from_table(db_name, selected_table, st.session_state.page)
+            if products:
+                st.header(f"Previous Search: {selected_table}")
+                
+                # Pagination controls for previous search
                 items_per_page = 12
-                total_pages = (len(products) + items_per_page - 1) // items_per_page
+                total_pages = (total_records + items_per_page - 1) // items_per_page
                 
                 # Display current page number and total pages
-                st.write(f"Page {st.session_state.page} of {total_pages}")
+                st.write(f"Page {st.session_state.page} of {total_pages} (Total Records: {total_records})")
                 
                 # Pagination buttons
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col1:
                     if st.session_state.page > 1:
-                        if st.button("Previous Page"):
+                        if st.button("Previous Page", key="prev_prev"):
                             st.session_state.page -= 1
-                            st.experimental_rerun()
+                            st.rerun()
                 with col2:
                     st.write("")  # Empty column for spacing
                 with col3:
                     if st.session_state.page < total_pages:
-                        if st.button("Next Page"):
+                        if st.button("Next Page", key="next_prev"):
                             st.session_state.page += 1
-                            st.experimental_rerun()
+                            st.rerun()
                 
                 # Display products for current page
-                start_idx = (st.session_state.page - 1) * items_per_page
-                end_idx = min(start_idx + items_per_page, len(products))
-                
-                for product in products[start_idx:end_idx]:
+                for product in products:
                     display_product_card(product, db_name)
-                
-                # Add download button
-                df = pd.DataFrame(products, columns=[
-                    "ID", "Store Page Link", "Product Page Link", "Platform", "Store",
-                    "Product Name", "Price", "Image File", "Image Link", "Rating",
-                    "Review Count", "Score"
-                ])
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    label="Download results as CSV",
-                    data=csv,
-                    file_name=f"{selected_store}_products_{current_time}.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.warning("No products found for the given search query.")
-    
-    # Display selected previous search with pagination
-    if 'selected_table' in locals() and selected_table:
-        products = get_products_from_table(db_name, selected_table)
-        if products:
-            st.header(f"Previous Search: {selected_table}")
-            
-            # Pagination controls for previous search
-            items_per_page = 12
-            total_pages = (len(products) + items_per_page - 1) // items_per_page
-            
-            # Display current page number and total pages
-            st.write(f"Page {st.session_state.page} of {total_pages}")
-            
-            # Pagination buttons
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col1:
-                if st.session_state.page > 1:
-                    if st.button("Previous Page", key="prev_prev"):
-                        st.session_state.page -= 1
-                        st.experimental_rerun()
-            with col2:
-                st.write("")  # Empty column for spacing
-            with col3:
-                if st.session_state.page < total_pages:
-                    if st.button("Next Page", key="next_prev"):
-                        st.session_state.page += 1
-                        st.experimental_rerun()
-            
-            # Display products for current page
-            start_idx = (st.session_state.page - 1) * items_per_page
-            end_idx = min(start_idx + items_per_page, len(products))
-            
-            for product in products[start_idx:end_idx]:
-                display_product_card(product, db_name)
+        except Exception as e:
+            st.error(f"Error loading previous search: {str(e)}")
 
 if __name__ == "__main__":
     main() 
