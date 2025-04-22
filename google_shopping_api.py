@@ -2,6 +2,7 @@ import requests
 from datetime import datetime, timedelta
 import imghdr
 import sqlite3
+import os
 
 from selenium.webdriver.common.by import By
 import re
@@ -93,8 +94,6 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
     products = []
     
     driver.get(f"https://www.google.com/search?q={keyword}+price&tbm=shop")
-    # driver.execute_script("document.body.style.zoom='25%'")
-    # scroll_to_bottom_multiple_times(driver, 2, 80)
     time.sleep(2)
     elements = driver.find_elements(By.CLASS_NAME, "Ez5pwe")
     num = 0
@@ -130,6 +129,7 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
                         image_type = imghdr.what(None, response.content) or "jpg"  # Default to jpg if unknown
                         download_url = f"products/{current_time}_{keyword}/images/{prefix}{section_id}.{image_type}"
                         
+                        os.makedirs(os.path.dirname(download_url), exist_ok=True)
                         with open(download_url, 'wb') as file:
                             file.write(response.content)
 
@@ -141,6 +141,7 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
                         
                         download_url = f"products/{current_time}_{keyword}/images/{prefix}{section_id}.{image_type}"
                         
+                        os.makedirs(os.path.dirname(download_url), exist_ok=True)
                         with open(download_url, 'wb') as file:
                             file.write(base64.b64decode(base64_data))
                         image_url = "Raw image"
@@ -184,24 +185,6 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
         except:
             rating_count = 0
 
-        record = [
-            str(section_id),
-            "https://google.com",
-            product_link,
-            "Google",
-            store,
-            "",
-            title,
-            "",
-            price,
-            download_url,
-            image_url,
-            "",
-            "",
-            rating,
-            rating_count
-        ]
-
         price_float = clean_price(price)
         score = (clean_rating(rating) * 2) + (rating_count / 100) - (price_float / 10)
 
@@ -220,14 +203,11 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
         )
 
         insert_product_record(db_name, table_name, db_record)
-        
-        products.append(record)
-        print(record)
+        products.append(db_record)  # Use the same record structure as the database
         section_id = section_id + 1
         num = num + 1
 
     driver.quit()
-
     return products
 
 def clean_rating_count(value):
