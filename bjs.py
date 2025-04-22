@@ -201,7 +201,7 @@ def get_product_list(driver, db_name, table_name, current_time, prefix):
 
             db_record = (
                 "https://instacart.com",
-                "https://instacart.com"+product_link,
+                product_link,
                 "Instacart",
                 "BJS",
                 title,
