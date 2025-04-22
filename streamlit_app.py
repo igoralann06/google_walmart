@@ -390,10 +390,6 @@ def match_image_with_google_lens(image_path, current_time):
         options.add_argument("--disable-dev-shm-usage")
         driver = uc.Chrome(options=options)
 
-        # Create directory for results if it doesn't exist
-        result_dir = f"products/{current_time}/matched_images"
-        os.makedirs(result_dir, exist_ok=True)
-
         # Get absolute path of the image
         absolute_path = os.path.abspath(image_path)
         
@@ -445,33 +441,11 @@ def match_image_with_google_lens(image_path, current_time):
                 results = driver.find_elements(By.TAG_NAME, "img")
                 search_results = [result.get_attribute('src') for result in results]
 
-                # Process and save matched images
+                # Store valid image URLs
                 for idx, img_url in enumerate(search_results):
                     if idx > 2:  # Skip first 3 results as they're usually UI elements
                         if img_url and (img_url.startswith("http") or img_url.startswith("data:image")):
-                            # Save the image
-                            try:
-                                if img_url.startswith("http"):
-                                    response = requests.get(img_url, stream=True)
-                                    if response.status_code == 200:
-                                        image_type = imghdr.what(None, response.content) or "jpg"
-                                        save_path = os.path.join(result_dir, f"matched_{idx}.{image_type}")
-                                        with open(save_path, "wb") as file:
-                                            for chunk in response.iter_content(1024):
-                                                file.write(chunk)
-                                elif img_url.startswith("data:image"):
-                                    match = re.match(r"data:image/(\w+);base64,(.*)", img_url)
-                                    if match:
-                                        image_type, base64_data = match.groups()
-                                        image_type = image_type if image_type else "jpg"
-                                        save_path = os.path.join(result_dir, f"matched_{idx}.{image_type}")
-                                        with open(save_path, "wb") as file:
-                                            file.write(base64.b64decode(base64_data))
-                                
-                                matched_images.append(save_path)
-                            except Exception as e:
-                                print(f"Error saving image {idx}: {e}")
-                                continue
+                            matched_images.append(img_url)
                 
                 if matched_images:
                     break
@@ -481,7 +455,7 @@ def match_image_with_google_lens(image_path, current_time):
                 time.sleep(2)
 
         driver.quit()
-        return matched_images[0] if matched_images else None
+        return matched_images
 
     except Exception as e:
         st.error(f"Error matching image: {str(e)}")
@@ -535,13 +509,17 @@ def display_product_card(product, db_name):
                         matched_images = match_image_with_google_lens(image_path, current_time)
                         if matched_images:
                             st.subheader("Similar Images Found:")
-                            for matched_image_path in matched_images:
+                            for img_url in matched_images:
                                 try:
-                                    if os.path.exists(matched_image_path):
-                                        image = Image.open(matched_image_path)
+                                    if img_url.startswith("data:image"):
+                                        # Handle base64 image
+                                        base64_data = img_url.split(',')[1]
+                                        image_data = base64.b64decode(base64_data)
+                                        image = Image.open(io.BytesIO(image_data))
                                         st.image(image, caption="Matched Image", use_container_width=True)
                                     else:
-                                        st.warning(f"Image file not found: {matched_image_path}")
+                                        # Handle URL image
+                                        st.image(img_url, caption="Matched Image", use_container_width=True)
                                 except Exception as e:
                                     st.error(f"Error displaying matched image: {str(e)}")
                         else:
