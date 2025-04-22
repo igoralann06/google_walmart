@@ -342,7 +342,7 @@ def compare_on_google(product_name, db_name, table_name, current_time):
                     
                     # Display product details
                     st.markdown(f"**{product[5]}**")  # product_name
-                    st.markdown(f"**Price:** {product[7]}")  # price
+                    st.markdown(f"**Price:** {product[6]}")  # price
                     st.markdown(f"**Store:** {product[4]}")  # store
                     
                     if product[9]:  # product_rating
@@ -629,8 +629,8 @@ def display_product_card(product, db_name, is_saved_item=False):
         st.markdown(f"### {product[5]}")  # product_name
         
         # Display price - product[6] contains the price
-        if product[6]:
-            st.markdown(f"**Price:** ${product[6]}")
+        if product[7]:
+            st.markdown(f"**Price:** ${product[7]}")
         else:
             st.markdown("**Price:** Not available")
             
