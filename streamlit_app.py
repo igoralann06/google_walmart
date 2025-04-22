@@ -231,7 +231,7 @@ def get_products_from_table(db_name, table_name, page=1, per_page=12):
         
     # Get total count of records
     cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-    total_records = cursor.fetchone()[0]
+    # total_records = cursor.fetchone()[0]
     
     # Calculate offset
     offset = (page - 1) * per_page
@@ -246,7 +246,7 @@ def get_products_from_table(db_name, table_name, page=1, per_page=12):
     """)
     products = cursor.fetchall()
     conn.close()
-    return products, total_records
+    return products
 
 def compare_on_google(product_name, db_name, table_name, current_time):
     """Compare a product on Google Shopping"""
