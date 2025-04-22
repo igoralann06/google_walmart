@@ -629,8 +629,8 @@ def display_product_card(product, db_name, is_saved_item=False):
         st.markdown(f"### {product[5]}")  # product_name
         
         # Display price - product[6] contains the price
-        if product[7]:
-            st.markdown(f"**Price:** ${product[7]}")
+        if product[5]:
+            st.markdown(f"**Price:** ${product[5]}")
         else:
             st.markdown("**Price:** Not available")
             
