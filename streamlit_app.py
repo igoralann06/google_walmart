@@ -509,19 +509,48 @@ def display_product_card(product, db_name):
                         matched_images = match_image_with_google_lens(image_path, current_time)
                         if matched_images:
                             st.subheader("Similar Images Found:")
+                            # Create columns for image display
+                            cols = st.columns(3)  # Display 3 images per row
+                            col_idx = 0
+                            
                             for img_url in matched_images:
+                                if not img_url or img_url == "data:,":  # Skip empty images
+                                    continue
+                                    
                                 try:
-                                    if img_url.startswith("data:image"):
-                                        # Handle base64 image
-                                        base64_data = img_url.split(',')[1]
-                                        image_data = base64.b64decode(base64_data)
-                                        image = Image.open(io.BytesIO(image_data))
-                                        st.image(image, caption="Matched Image", use_container_width=True)
-                                    else:
-                                        # Handle URL image
-                                        st.image(img_url, caption="Matched Image", use_container_width=True)
+                                    with cols[col_idx]:
+                                        if img_url.startswith("data:image"):
+                                            # Handle base64 image
+                                            try:
+                                                base64_data = img_url.split(',')[1]
+                                                image_data = base64.b64decode(base64_data)
+                                                image = Image.open(io.BytesIO(image_data))
+                                                # Resize image if it's too large
+                                                if max(image.size) > 200:
+                                                    ratio = 200 / max(image.size)
+                                                    new_size = tuple(int(dim * ratio) for dim in image.size)
+                                                    image = image.resize(new_size, Image.Resampling.LANCZOS)
+                                                st.image(image, use_container_width=True)
+                                            except:
+                                                continue  # Skip invalid base64 images
+                                        else:
+                                            # Handle URL image
+                                            try:
+                                                response = requests.get(img_url, timeout=5)
+                                                if response.status_code == 200:
+                                                    image = Image.open(io.BytesIO(response.content))
+                                                    # Resize image if it's too large
+                                                    if max(image.size) > 200:
+                                                        ratio = 200 / max(image.size)
+                                                        new_size = tuple(int(dim * ratio) for dim in image.size)
+                                                        image = image.resize(new_size, Image.Resampling.LANCZOS)
+                                                    st.image(image, use_container_width=True)
+                                            except:
+                                                continue  # Skip invalid URL images
+                                    
+                                    col_idx = (col_idx + 1) % 3  # Move to next column
                                 except Exception as e:
-                                    st.error(f"Error displaying matched image: {str(e)}")
+                                    continue  # Skip any other errors and continue with next image
                         else:
                             st.warning("No similar images found.")
                 else:
