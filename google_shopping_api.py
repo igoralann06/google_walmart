@@ -188,18 +188,19 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
         price_float = clean_price(price)
         score = (clean_rating(rating) * 2) + (rating_count / 100) - (price_float / 10)
 
+        # Create record with correct field order matching the database schema
         db_record = (
-            "https://google.com",
-            product_link,
-            "Google",
-            store,
-            title,
-            price,
-            download_url,
-            image_url,
-            rating,
-            rating_count,
-            score
+            "https://google.com",  # store_page_link
+            product_link,          # product_item_page_link
+            "Google",             # platform
+            store,                # store
+            title,                # product_name
+            price,                # price
+            download_url,         # image_file_name
+            image_url,            # image_link
+            str(rating),          # product_rating
+            str(rating_count),    # product_review_number
+            str(score)            # score
         )
 
         insert_product_record(db_name, table_name, db_record)
