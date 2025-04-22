@@ -330,7 +330,29 @@ def compare_on_google(product_name, db_name, table_name, current_time):
             if products:
                 # Display products in a single column
                 for product in products:
-                    display_product_card(product, db_name, source='google')  # Add source parameter
+                    # Create a card-like container
+                    st.markdown("---")  # Separator between cards
+                    
+                    # Display product image
+                    image_path = product[7]  # image_file_name
+                    image_url = product[8]   # image_link
+                    
+                    if not display_image(image_path, image_url):
+                        st.warning("No image available")
+                    
+                    # Display product details
+                    st.markdown(f"**{product[5]}**")  # product_name
+                    st.markdown(f"**Price:** {product[6]}")  # price
+                    st.markdown(f"**Store:** {product[4]}")  # store
+                    
+                    if product[9]:  # product_rating
+                        st.markdown(f"**Rating:** {product[9]}")
+                    if product[10]:  # product_review_number
+                        st.markdown(f"**Reviews:** {product[10]}")
+                    
+                    # Add product page link
+                    if product[2]:  # product_item_page_link
+                        st.markdown(f"[Product Page]({product[2]})")
             else:
                 st.warning("No comparison results found on Google Shopping.")
         except Exception as e:
@@ -356,7 +378,29 @@ def compare_on_walmart(product_name, db_name, table_name, current_time):
             if products:
                 # Display products in a single column
                 for product in products:
-                    display_product_card(product, db_name, source='walmart')  # Add source parameter
+                    # Create a card-like container
+                    st.markdown("---")  # Separator between cards
+                    
+                    # Display product image
+                    image_path = product[7]  # image_file_name
+                    image_url = product[8]   # image_link
+                    
+                    if not display_image(image_path, image_url):
+                        st.warning("No image available")
+                    
+                    # Display product details
+                    st.markdown(f"**{product[5]}**")  # product_name
+                    st.markdown(f"**Price:** {product[6]}")  # price
+                    st.markdown(f"**Store:** {product[4]}")  # store
+                    
+                    if product[9]:  # product_rating
+                        st.markdown(f"**Rating:** {product[9]}")
+                    if product[10]:  # product_review_number
+                        st.markdown(f"**Reviews:** {product[10]}")
+                    
+                    # Add product page link
+                    if product[2]:  # product_item_page_link
+                        st.markdown(f"[Product Page]({product[2]})")
             else:
                 st.warning("No comparison results found on Walmart.")
         except Exception as e:
@@ -547,11 +591,11 @@ def save_selected_products(selected_products, db_name):
     finally:
         conn.close()
 
-def display_product_card(product, db_name, is_saved_item=False, source=None):
+def display_product_card(product, db_name, is_saved_item=False):
     col1, col2 = st.columns([1, 3])
     
-    # Create a unique key for the checkbox based on product details and source
-    checkbox_key = f"select_{source}_{product[0]}_{product[4]}_{product[6]}"  # Using source, id, store, and price to create unique key
+    # Create a unique key for the checkbox based on product details
+    checkbox_key = f"select_{product[0]}_{product[4]}_{product[6]}"  # Using id, store, and price to create unique key
     
     with col1:
         # Display product image
@@ -563,22 +607,23 @@ def display_product_card(product, db_name, is_saved_item=False, source=None):
     
     with col2:
         # Add checkbox for selection
-        if not is_saved_item and source:
-            # Initialize selected_products for each source
-            if f'selected_products_{source}' not in st.session_state:
-                st.session_state[f'selected_products_{source}'] = []
+        if not is_saved_item:
+            # Initialize selected_products as a list if it doesn't exist
+            if 'selected_products' not in st.session_state:
+                st.session_state.selected_products = []
             
             # Check if this product is already selected
+            product_key = (product[0], product[4], product[6])  # Create a unique identifier
             is_selected = st.checkbox("Select for saving", key=checkbox_key)
             
             # Update selected_products based on checkbox state
             if is_selected:
-                if product not in st.session_state[f'selected_products_{source}']:
-                    st.session_state[f'selected_products_{source}'].append(product)
+                if product not in st.session_state.selected_products:
+                    st.session_state.selected_products.append(product)
                     st.rerun()  # Force a rerun to update the sidebar
             else:
-                if product in st.session_state[f'selected_products_{source}']:
-                    st.session_state[f'selected_products_{source}'].remove(product)
+                if product in st.session_state.selected_products:
+                    st.session_state.selected_products.remove(product)
                     st.rerun()  # Force a rerun to update the sidebar
         
         # Display product details
@@ -684,40 +729,25 @@ def main():
     # Initialize session state for pagination and selected products
     if 'page' not in st.session_state:
         st.session_state.page = 1
-    if 'selected_products_google' not in st.session_state:
-        st.session_state.selected_products_google = []
-    if 'selected_products_walmart' not in st.session_state:
-        st.session_state.selected_products_walmart = []
+    if 'selected_products' not in st.session_state:
+        st.session_state.selected_products = []
     
     # Sidebar
     with st.sidebar:
-        # Show Google selected products
-        st.header("Selected Google Products")
-        num_selected_google = len(st.session_state.selected_products_google)
-        st.write(f"Number of selected Google products: {num_selected_google}")
+        # Always show the Selected Products section
+        st.header("Selected Products")
+        num_selected = len(st.session_state.selected_products)
+        st.write(f"Number of selected products: {num_selected}")
         
-        if num_selected_google > 0:
-            if st.button("Save Selected Google Products"):
-                if save_selected_products(st.session_state.selected_products_google, db_name):
-                    st.success("Selected Google products have been saved successfully!")
-                    st.session_state.selected_products_google = []
-                    st.rerun()
+        # Show save button if there are selected products
+        if num_selected > 0:
+            if st.button("Save Selected Products"):
+                if save_selected_products(st.session_state.selected_products, db_name):
+                    st.success("Selected products have been saved successfully!")
+                    st.session_state.selected_products = []  # Clear selections after saving
+                    st.rerun()  # Rerun to update the UI
                 else:
-                    st.error("Failed to save Google products. Please try again.")
-        
-        # Show Walmart selected products
-        st.header("Selected Walmart Products")
-        num_selected_walmart = len(st.session_state.selected_products_walmart)
-        st.write(f"Number of selected Walmart products: {num_selected_walmart}")
-        
-        if num_selected_walmart > 0:
-            if st.button("Save Selected Walmart Products"):
-                if save_selected_products(st.session_state.selected_products_walmart, db_name):
-                    st.success("Selected Walmart products have been saved successfully!")
-                    st.session_state.selected_products_walmart = []
-                    st.rerun()
-                else:
-                    st.error("Failed to save Walmart products. Please try again.")
+                    st.error("Failed to save some products. Please try again.")
         
         # Display previous searches
         st.header("Previous Searches")
