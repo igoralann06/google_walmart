@@ -270,25 +270,25 @@ def compare_on_google(product_name, db_name, table_name, current_time):
                     st.markdown("---")  # Separator between cards
                     
                     # Display product image
-                    image_path = product[6]  # image_file_name is at index 6
-                    image_url = product[7]   # image_link is at index 7
+                    image_path = product[7]  # image_file_name
+                    image_url = product[8]   # image_link
                     
                     if not display_image(image_path, image_url):
                         st.warning("No image available")
                     
                     # Display product details
-                    st.markdown(f"**{product[4]}**")  # product_name is at index 4
-                    st.markdown(f"**Price:** {product[5]}")  # price is at index 5
-                    st.markdown(f"**Store:** {product[3]}")  # store is at index 3
+                    st.markdown(f"**{product[5]}**")  # product_name
+                    st.markdown(f"**Price:** {product[6]}")  # price
+                    st.markdown(f"**Store:** {product[4]}")  # store
                     
-                    if product[8]:  # product_rating is at index 8
-                        st.markdown(f"**Rating:** {product[8]}")
-                    if product[9]:  # product_review_number is at index 9
-                        st.markdown(f"**Reviews:** {product[9]}")
+                    if product[9]:  # product_rating
+                        st.markdown(f"**Rating:** {product[9]}")
+                    if product[10]:  # product_review_number
+                        st.markdown(f"**Reviews:** {product[10]}")
                     
                     # Add product page link
-                    if product[1]:  # product_item_page_link is at index 1
-                        st.markdown(f"[Product Page]({product[1]})")
+                    if product[2]:  # product_item_page_link
+                        st.markdown(f"[Product Page]({product[2]})")
             else:
                 st.warning("No comparison results found on Google Shopping.")
         except Exception as e:
@@ -318,25 +318,25 @@ def compare_on_walmart(product_name, db_name, table_name, current_time):
                     st.markdown("---")  # Separator between cards
                     
                     # Display product image
-                    image_path = product[6]  # image_file_name is at index 6
-                    image_url = product[7]   # image_link is at index 7
+                    image_path = product[7]  # image_file_name
+                    image_url = product[8]   # image_link
                     
                     if not display_image(image_path, image_url):
                         st.warning("No image available")
                     
                     # Display product details
-                    st.markdown(f"**{product[4]}**")  # product_name is at index 4
-                    st.markdown(f"**Price:** {product[5]}")  # price is at index 5
-                    st.markdown(f"**Store:** {product[3]}")  # store is at index 3
+                    st.markdown(f"**{product[5]}**")  # product_name
+                    st.markdown(f"**Price:** {product[6]}")  # price
+                    st.markdown(f"**Store:** {product[4]}")  # store
                     
-                    if product[8]:  # product_rating is at index 8
-                        st.markdown(f"**Rating:** {product[8]}")
-                    if product[9]:  # product_review_number is at index 9
-                        st.markdown(f"**Reviews:** {product[9]}")
+                    if product[9]:  # product_rating
+                        st.markdown(f"**Rating:** {product[9]}")
+                    if product[10]:  # product_review_number
+                        st.markdown(f"**Reviews:** {product[10]}")
                     
                     # Add product page link
-                    if product[1]:  # product_item_page_link is at index 1
-                        st.markdown(f"[Product Page]({product[1]})")
+                    if product[2]:  # product_item_page_link
+                        st.markdown(f"[Product Page]({product[2]})")
             else:
                 st.warning("No comparison results found on Walmart.")
         except Exception as e:
@@ -468,26 +468,26 @@ def display_product_card(product, db_name):
     
     with col1:
         # Display product image
-        image_path = product[6]  # image_file_name is at index 6
-        image_url = product[7]   # image_link is at index 7
+        image_path = product[7]  # image_file_name
+        image_url = product[8]   # image_link
         
         if not display_image(image_path, image_url):
             st.warning("No image available")
     
     with col2:
         # Display product details
-        st.markdown(f"### {product[4]}")  # product_name is at index 4
-        st.markdown(f"**Price:** {product[5]}")  # price is at index 5
-        st.markdown(f"**Store:** {product[3]}")  # store is at index 3
+        st.markdown(f"### {product[5]}")  # product_name
+        st.markdown(f"**Price:** {product[6]}")  # price
+        st.markdown(f"**Store:** {product[4]}")  # store
         
-        if product[8]:  # product_rating is at index 8
-            st.markdown(f"**Rating:** {product[8]}")
-        if product[9]:  # product_review_number is at index 9
-            st.markdown(f"**Reviews:** {product[9]}")
+        if product[9]:  # product_rating
+            st.markdown(f"**Rating:** {product[9]}")
+        if product[10]:  # product_review_number
+            st.markdown(f"**Reviews:** {product[10]}")
         
         # Add product page link
-        if product[1]:  # product_item_page_link is at index 1
-            st.markdown(f"[Product Page]({product[1]})")
+        if product[2]:  # product_item_page_link
+            st.markdown(f"[Product Page]({product[2]})")
         
         # Add comparison buttons
         col3, col4, col5 = st.columns(3)
@@ -495,12 +495,12 @@ def display_product_card(product, db_name):
             if st.button("Compare on Google", key=f"google_{product[0]}"):
                 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
                 table_name = f"google_comparison_{current_time}"
-                compare_on_google(product[4], db_name, table_name, current_time)  # Use product name from index 4
+                compare_on_google(product[5], db_name, table_name, current_time)
         with col4:
             if st.button("Compare on Walmart", key=f"walmart_{product[0]}"):
                 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
                 table_name = f"walmart_comparison_{current_time}"
-                compare_on_walmart(product[4], db_name, table_name, current_time)  # Use product name from index 4
+                compare_on_walmart(product[5], db_name, table_name, current_time)
         with col5:
             match_button = st.button("Match Images", key=f"match_{product[0]}")
         
