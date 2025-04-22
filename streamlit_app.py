@@ -530,8 +530,72 @@ def match_image_with_google_lens(image_path, current_time):
             driver.quit()
         return None
 
-def display_product_card(product, db_name):
+def save_selected_products(selected_products, db_name):
+    """Save selected products to items_search table"""
+    # Create items_search table if it doesn't exist
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS items_search (
+        id INTEGER PRIMARY KEY,
+        store_page_link TEXT,
+        product_item_page_link TEXT,
+        platform TEXT,
+        store TEXT,
+        product_name TEXT,
+        price TEXT,
+        image_file_name TEXT,
+        image_link TEXT,
+        product_rating TEXT,
+        product_review_number TEXT,
+        score TEXT,
+        saved_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    cursor.execute(create_table_query)
+    conn.commit()
+    
+    # Insert selected products
+    insert_query = """
+    INSERT INTO items_search (
+        store_page_link, product_item_page_link, platform, store, 
+        product_name, price, image_file_name, image_link, 
+        product_rating, product_review_number, score
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    
+    try:
+        for product in selected_products:
+            # Extract the values we need from the product tuple
+            # product[0] is id, which we skip as it's auto-generated in items_search
+            record = (
+                product[1],  # store_page_link
+                product[2],  # product_item_page_link
+                product[3],  # platform
+                product[4],  # store
+                product[5],  # product_name
+                product[6],  # price
+                product[7],  # image_file_name
+                product[8],  # image_link
+                product[9],  # product_rating
+                product[10], # product_review_number
+                product[11] if len(product) > 11 else ""  # score
+            )
+            cursor.execute(insert_query, record)
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving product: {str(e)}")
+        return False
+    finally:
+        conn.close()
+
+def display_product_card(product, db_name, is_saved_item=False):
     col1, col2 = st.columns([1, 3])
+    
+    # Create a unique key for the checkbox based on product details
+    checkbox_key = f"select_{product[0]}_{product[4]}_{product[6]}"  # Using id, store, and price to create unique key
     
     with col1:
         # Display product image
@@ -542,6 +606,26 @@ def display_product_card(product, db_name):
             st.warning("No image available")
     
     with col2:
+        # Add checkbox for selection
+        if not is_saved_item:
+            # Initialize selected_products as a list if it doesn't exist
+            if 'selected_products' not in st.session_state:
+                st.session_state.selected_products = []
+            
+            # Check if this product is already selected
+            product_key = (product[0], product[4], product[6])  # Create a unique identifier
+            is_selected = st.checkbox("Select for saving", key=checkbox_key)
+            
+            # Update selected_products based on checkbox state
+            if is_selected:
+                if product not in st.session_state.selected_products:
+                    st.session_state.selected_products.append(product)
+                    st.rerun()  # Force a rerun to update the sidebar
+            else:
+                if product in st.session_state.selected_products:
+                    st.session_state.selected_products.remove(product)
+                    st.rerun()  # Force a rerun to update the sidebar
+        
         # Display product details
         st.markdown(f"### {product[5]}")  # product_name
         st.markdown(f"**Price:** {product[6]}")  # price
@@ -579,22 +663,19 @@ def display_product_card(product, db_name):
                     matched_images = match_image_with_google_lens(image_path, current_time)
                     if matched_images:
                         with st.expander("Similar Images Found", expanded=True):
-                            # Create 4 columns for the image grid
                             cols = st.columns(4)
                             col_idx = 0
                             
                             for img_url in matched_images:
-                                if not img_url or img_url == "data:,":  # Skip empty images
+                                if not img_url or img_url == "data:,":
                                     continue
                                     
                                 try:
                                     if img_url.startswith("data:image"):
-                                        # Handle base64 image
                                         try:
                                             base64_data = img_url.split(',')[1]
                                             image_data = base64.b64decode(base64_data)
                                             image = Image.open(io.BytesIO(image_data))
-                                            # Resize image to smaller size (100px max)
                                             if max(image.size) > 100:
                                                 ratio = 100 / max(image.size)
                                                 new_size = tuple(int(dim * ratio) for dim in image.size)
@@ -604,12 +685,10 @@ def display_product_card(product, db_name):
                                         except:
                                             continue
                                     else:
-                                        # Handle URL image
                                         try:
                                             response = requests.get(img_url, timeout=5)
                                             if response.status_code == 200:
                                                 image = Image.open(io.BytesIO(response.content))
-                                                # Resize image to smaller size (100px max)
                                                 if max(image.size) > 100:
                                                     ratio = 100 / max(image.size)
                                                     new_size = tuple(int(dim * ratio) for dim in image.size)
@@ -641,23 +720,42 @@ def main():
     st.set_page_config(page_title="Product Search", layout="wide")
     st.title("Product Search Application")
     
+    # Define database name at the start
+    db_name = "product_data.db"
+    
     # Create products directory if it doesn't exist
     Path("products").mkdir(exist_ok=True)
     
-    # Initialize session state for pagination
+    # Initialize session state for pagination and selected products
     if 'page' not in st.session_state:
         st.session_state.page = 1
+    if 'selected_products' not in st.session_state:
+        st.session_state.selected_products = []
     
     # Sidebar
     with st.sidebar:
-        # Display previous searches at the top
+        # Always show the Selected Products section
+        st.header("Selected Products")
+        num_selected = len(st.session_state.selected_products)
+        st.write(f"Number of selected products: {num_selected}")
+        
+        # Show save button if there are selected products
+        if num_selected > 0:
+            if st.button("Save Selected Products"):
+                if save_selected_products(st.session_state.selected_products, db_name):
+                    st.success("Selected products have been saved successfully!")
+                    st.session_state.selected_products = []  # Clear selections after saving
+                    st.rerun()  # Rerun to update the UI
+                else:
+                    st.error("Failed to save some products. Please try again.")
+        
+        # Display previous searches
         st.header("Previous Searches")
-        db_name = "product_data.db"
         table_names = get_table_names(db_name)
         if table_names:
             selected_table = st.selectbox("Select a previous search", table_names)
         
-        # Search options below previous searches
+        # Search options
         st.header("Search Options")
         selected_store = st.selectbox("Select Store", AVAILABLE_STORES)
         search_button = st.button("Search")
@@ -669,7 +767,6 @@ def main():
                 # Create a unique table name based on store and timestamp
                 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
                 table_name = f"{selected_store}_{current_time}"
-                db_name = "product_data.db"
                 
                 # Create table and get products
                 create_database_table(db_name, table_name)
