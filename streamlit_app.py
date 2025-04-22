@@ -382,13 +382,16 @@ def display_image(image_path, image_url):
 def match_image_with_google_lens(image_path, current_time):
     """Match image using Google Lens"""
     try:
-        # Set up Chrome WebDriver
+        # Set up Chrome WebDriver with undetected-chromedriver
         options = uc.ChromeOptions()
         options.add_argument("--start-maximized")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         driver = uc.Chrome(options=options)
 
         # Create directory for results if it doesn't exist
-        result_dir = f"products/{current_time}"
+        result_dir = f"products/{current_time}/matched_images"
         os.makedirs(result_dir, exist_ok=True)
 
         # Get absolute path of the image
@@ -399,31 +402,83 @@ def match_image_with_google_lens(image_path, current_time):
         time.sleep(2)
 
         # Click the "Search by Image" button (Google Lens icon)
-        lens_button = driver.find_element(By.XPATH, "//div[@aria-label='Search by image']")
-        lens_button.click()
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                lens_button = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@aria-label='Search by image']"))
+                )
+                lens_button.click()
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                time.sleep(2)
+
         time.sleep(2)
 
         # Upload Image
-        upload_tab = driver.find_element(By.XPATH, "//span[text()='upload a file  ']")
+        upload_tab = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//span[text()='upload a file  ']"))
+        )
         upload_tab.click()
         time.sleep(2)
 
         # Upload the file
-        file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
+        file_input = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
+        )
         file_input.send_keys(absolute_path)
         time.sleep(5)  # Wait for results to load
 
-        # Get image results
-        results = driver.find_elements(By.TAG_NAME, "img")
-        search_results = [result.get_attribute('src') for result in results]
-
-        # Store results
+        # Get image results with retries
         matched_images = []
-        for idx, img_url in enumerate(search_results):
-            if idx > 2:  # Skip first 3 results as they're usually UI elements
-                if img_url and (img_url.startswith("http") or img_url.startswith("data:image")):
-                    matched_images.append(img_url)
-                    break  # Get only the first valid result
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Wait for results to be visible
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "img"))
+                )
+                
+                # Get all image elements
+                results = driver.find_elements(By.TAG_NAME, "img")
+                search_results = [result.get_attribute('src') for result in results]
+
+                # Process and save matched images
+                for idx, img_url in enumerate(search_results):
+                    if idx > 2:  # Skip first 3 results as they're usually UI elements
+                        if img_url and (img_url.startswith("http") or img_url.startswith("data:image")):
+                            # Save the image
+                            try:
+                                if img_url.startswith("http"):
+                                    response = requests.get(img_url, stream=True)
+                                    if response.status_code == 200:
+                                        image_type = imghdr.what(None, response.content) or "jpg"
+                                        save_path = os.path.join(result_dir, f"matched_{idx}.{image_type}")
+                                        with open(save_path, "wb") as file:
+                                            for chunk in response.iter_content(1024):
+                                                file.write(chunk)
+                                elif img_url.startswith("data:image"):
+                                    match = re.match(r"data:image/(\w+);base64,(.*)", img_url)
+                                    if match:
+                                        image_type, base64_data = match.groups()
+                                        image_type = image_type if image_type else "jpg"
+                                        save_path = os.path.join(result_dir, f"matched_{idx}.{image_type}")
+                                        with open(save_path, "wb") as file:
+                                            file.write(base64.b64decode(base64_data))
+                                
+                                matched_images.append(save_path)
+                            except Exception as e:
+                                print(f"Error saving image {idx}: {e}")
+                                continue
+                
+                if matched_images:
+                    break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                time.sleep(2)
 
         driver.quit()
         return matched_images[0] if matched_images else None
