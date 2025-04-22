@@ -138,6 +138,9 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
         try:
             img_element = element.find_element(By.CLASS_NAME, "VeBrne")
             image_url = img_element.get_dom_attribute("src")
+            # Skip base64 images
+            if image_url and image_url.startswith("data:image"):
+                image_url = "Base64 image data"
         except:
             image_url = ""
 
@@ -190,31 +193,39 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
             score
         )
 
-        # Create Excel record
+        # Create Excel record with safe string handling
         excel_record = [
             str(section_id),
             "https://google.com",
-            product_link,
+            product_link if product_link else "",
             "Google",
-            store,
+            store if store else "",
             "",
-            title,
+            title if title else "",
             "",
-            price,
-            download_url,
-            image_url,
+            price if price else "",
+            download_url if download_url else "",
+            "Base64 image data" if image_url and image_url.startswith("data:image") else (image_url if image_url else ""),
             "",
             "",
-            rating,
-            rating_count
+            rating if rating else "",
+            str(rating_count) if rating_count else "0"
         ]
 
-        # Write to Excel
-        for col_index, value in enumerate(excel_record):
-            sheet.write(section_id, col_index, value)
+        # Write to Excel with safe string handling
+        try:
+            for col_index, value in enumerate(excel_record):
+                if value is None:
+                    value = ""
+                # Ensure the value is a string and doesn't exceed Excel's limit
+                safe_value = str(value)[:32767] if value else ""
+                sheet.write(section_id, col_index, safe_value)
+        except Exception as e:
+            print(f"Error writing to Excel: {str(e)}")
+            continue
 
         insert_product_record(db_name, table_name, db_record)
-        products.append(db_record)  # Use the same record structure as the database
+        products.append(db_record)
         section_id = section_id + 1
         num = num + 1
 
