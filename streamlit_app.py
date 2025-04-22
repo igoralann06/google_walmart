@@ -262,7 +262,7 @@ def compare_on_google(product_name, db_name, table_name, current_time):
             
             # Display comparison results in card format
             st.subheader(f"Google Shopping Results for: {product_name}")
-            products = get_products_from_table(db_name, table_name)
+            products, total_records = get_products_from_table(db_name, table_name)
             if products:
                 # Display products in a single column
                 for product in products:
