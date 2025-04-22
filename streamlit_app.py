@@ -148,12 +148,25 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
             try:
                 img_element = element.find_element(By.TAG_NAME, "img")
                 image_url = img_element.get_dom_attribute("src")
-            except:
-                image_url = ""
-            
-            if image_url:
-                try:
-                    if image_url.startswith("http"):
+                
+                # Handle base64 images
+                if image_url and image_url.startswith("data:image"):
+                    try:
+                        match = re.match(r"data:image/(\w+);base64,(.*)", image_url)
+                        if match:
+                            image_type, base64_data = match.groups()
+                            image_type = image_type if image_type else "jpg"
+                            download_url = f"products/{current_time}_{prefix}/images/{prefix}{section_id}.{image_type}"
+                            
+                            os.makedirs(os.path.dirname(download_url), exist_ok=True)
+                            with open(download_url, 'wb') as file:
+                                file.write(base64.b64decode(base64_data))
+                    except Exception as e:
+                        print(f"Error saving base64 image: {str(e)}")
+                        download_url = ""
+                # Handle regular URLs
+                elif image_url and image_url.startswith("http"):
+                    try:
                         response = requests.get(image_url)
                         if response.status_code == 200:
                             image_type = imghdr.what(None, response.content) or "jpg"
@@ -162,22 +175,11 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
                             os.makedirs(os.path.dirname(download_url), exist_ok=True)
                             with open(download_url, 'wb') as file:
                                 file.write(response.content)
-
-                    elif image_url.startswith("data:image"):
-                        match = re.match(r"data:image/(\w+);base64,(.*)", image_url)
-                        if match:
-                            image_type, base64_data = match.groups()
-                            image_type = image_type if image_type else "jpg"
-                            
-                            download_url = f"products/{current_time}_{prefix}/images/{prefix}{section_id}.{image_type}"
-                            
-                            os.makedirs(os.path.dirname(download_url), exist_ok=True)
-                            with open(download_url, 'wb') as file:
-                                file.write(base64.b64decode(base64_data))
-                            image_url = "Raw image"
-
-                except Exception as e:
-                    print("Error saving image:", e)
+                    except Exception as e:
+                        print(f"Error saving image URL: {str(e)}")
+                        download_url = ""
+            except:
+                image_url = ""
 
             try:
                 title_element = element.find_element(By.CLASS_NAME, "w_V_DM")
@@ -205,7 +207,7 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
                 store,
                 title,
                 price,
-                download_url,
+                download_url,  # Use the saved image path
                 image_url,
                 rating,
                 rating_count,
@@ -216,24 +218,32 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
             excel_record = [
                 str(section_id),
                 "https://walmart.com",
-                "https://www.walmart.com" + product_link,
+                "https://www.walmart.com" + product_link if product_link else "",
                 "Walmart",
                 store,
                 "",
-                title,
+                title if title else "",
                 "",
-                price,
-                download_url,
-                image_url,
+                price if price else "",
+                download_url if download_url else "",  # Use the saved image path
+                image_url if image_url else "",
                 "",
                 "",
-                rating,
-                rating_count
+                rating if rating else "",
+                str(rating_count) if rating_count else "0"
             ]
 
-            # Write to Excel
-            for col_index, value in enumerate(excel_record):
-                sheet.write(section_id, col_index, value)
+            # Write to Excel with safe string handling
+            try:
+                for col_index, value in enumerate(excel_record):
+                    if value is None:
+                        value = ""
+                    # Ensure the value is a string and doesn't exceed Excel's limit
+                    safe_value = str(value)[:32767] if value else ""
+                    sheet.write(section_id, col_index, safe_value)
+            except Exception as e:
+                print(f"Error writing to Excel: {str(e)}")
+                continue
 
             insert_product_record(db_name, table_name, db_record)
             section_id += 1

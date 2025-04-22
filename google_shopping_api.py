@@ -138,9 +138,36 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
         try:
             img_element = element.find_element(By.CLASS_NAME, "VeBrne")
             image_url = img_element.get_dom_attribute("src")
-            # Skip base64 images
+            
+            # Handle base64 images
             if image_url and image_url.startswith("data:image"):
-                image_url = "Base64 image data"
+                try:
+                    match = re.match(r"data:image/(\w+);base64,(.*)", image_url)
+                    if match:
+                        image_type, base64_data = match.groups()
+                        image_type = image_type if image_type else "jpg"
+                        download_url = f"products/{current_time}_{prefix}/images/{prefix}{section_id}.{image_type}"
+                        
+                        os.makedirs(os.path.dirname(download_url), exist_ok=True)
+                        with open(download_url, 'wb') as file:
+                            file.write(base64.b64decode(base64_data))
+                except Exception as e:
+                    print(f"Error saving base64 image: {str(e)}")
+                    download_url = ""
+            # Handle regular URLs
+            elif image_url and image_url.startswith("http"):
+                try:
+                    response = requests.get(image_url)
+                    if response.status_code == 200:
+                        image_type = imghdr.what(None, response.content) or "jpg"
+                        download_url = f"products/{current_time}_{prefix}/images/{prefix}{section_id}.{image_type}"
+                        
+                        os.makedirs(os.path.dirname(download_url), exist_ok=True)
+                        with open(download_url, 'wb') as file:
+                            file.write(response.content)
+                except Exception as e:
+                    print(f"Error saving image URL: {str(e)}")
+                    download_url = ""
         except:
             image_url = ""
 
@@ -186,7 +213,7 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
             store,
             title,
             price,
-            download_url,
+            download_url,  # Use the saved image path
             image_url,
             rating,
             rating_count,
@@ -204,8 +231,8 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
             title if title else "",
             "",
             price if price else "",
-            download_url if download_url else "",
-            "Base64 image data" if image_url and image_url.startswith("data:image") else (image_url if image_url else ""),
+            download_url if download_url else "",  # Use the saved image path
+            image_url if image_url else "",
             "",
             "",
             rating if rating else "",
