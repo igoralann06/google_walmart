@@ -18,6 +18,7 @@ import threading
 import requests
 from pathlib import Path
 import imghdr
+import xlwt
 
 from walmart import get_walmart_products
 from aldi import get_aldi_products
@@ -105,6 +106,24 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
         section_id = 1
         products = []
         
+        # Create Excel workbook
+        workbook = xlwt.Workbook()
+        sheet = workbook.add_sheet('Sheet1')
+        
+        # Define column headers and widths
+        titleData = ["id", "Store page link", "Product item page link", "Platform", "Store", 
+                    "Product_description", "Product Name", "Units/Counts", "Price", 
+                    "image_file_names", "Image_Link", "Store Rating", "Store Review number", 
+                    "Product Rating", "Product Review number"]
+        widths = [10, 50, 50, 60, 45, 70, 35, 25, 20, 130, 130, 30, 30, 30, 30, 60]
+        style = xlwt.easyxf('font: bold 1; align: horiz center')
+        
+        # Write headers to Excel
+        for col_index, value in enumerate(titleData):
+            first_col = sheet.col(col_index)
+            first_col.width = 256 * widths[col_index]
+            sheet.write(0, col_index, value, style)
+        
         driver.get(f"https://www.walmart.com/search?q={prefix}")
         time.sleep(2)
         elements = driver.find_elements(By.XPATH, '//*[@role="group"]')
@@ -178,6 +197,7 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
             except:
                 price = ""
 
+            # Create database record
             db_record = (
                 "https://walmart.com",
                 "https://www.walmart.com" + product_link,
@@ -192,9 +212,38 @@ def get_walmart_products_from_api(db_name, table_name, current_time, prefix, ite
                 ""
             )
 
+            # Create Excel record
+            excel_record = [
+                str(section_id),
+                "https://walmart.com",
+                "https://www.walmart.com" + product_link,
+                "Walmart",
+                store,
+                "",
+                title,
+                "",
+                price,
+                download_url,
+                image_url,
+                "",
+                "",
+                rating,
+                rating_count
+            ]
+
+            # Write to Excel
+            for col_index, value in enumerate(excel_record):
+                sheet.write(section_id, col_index, value)
+
             insert_product_record(db_name, table_name, db_record)
             section_id += 1
             num += 1
+
+        # Save Excel file
+        excel_filename = f"products/{current_time}_{prefix}/walmart_products_{current_time}.xls"
+        os.makedirs(os.path.dirname(excel_filename), exist_ok=True)
+        workbook.save(excel_filename)
+        st.success(f"Excel file saved as: {excel_filename}")
 
     except Exception as e:
         st.error(f"Error searching Walmart: {str(e)}")

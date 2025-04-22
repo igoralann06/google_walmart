@@ -11,6 +11,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import base64
 from flask_cors import CORS
+import xlwt
+import streamlit as st
 
 def create_database_table(db_name, table_name):
     conn = sqlite3.connect(db_name)
@@ -93,6 +95,24 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
     section_id = 1
     products = []
     
+    # Create Excel workbook
+    workbook = xlwt.Workbook()
+    sheet = workbook.add_sheet('Sheet1')
+    
+    # Define column headers and widths
+    titleData = ["id", "Store page link", "Product item page link", "Platform", "Store", 
+                "Product_description", "Product Name", "Units/Counts", "Price", 
+                "image_file_names", "Image_Link", "Store Rating", "Store Review number", 
+                "Product Rating", "Product Review number"]
+    widths = [10, 50, 50, 60, 45, 70, 35, 25, 20, 130, 130, 30, 30, 30, 30, 60]
+    style = xlwt.easyxf('font: bold 1; align: horiz center')
+    
+    # Write headers to Excel
+    for col_index, value in enumerate(titleData):
+        first_col = sheet.col(col_index)
+        first_col.width = 256 * widths[col_index]
+        sheet.write(0, col_index, value, style)
+    
     driver.get(f"https://www.google.com/search?q={keyword}+price&tbm=shop")
     time.sleep(2)
     elements = driver.find_elements(By.CLASS_NAME, "Ez5pwe")
@@ -120,45 +140,12 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
             image_url = img_element.get_dom_attribute("src")
         except:
             image_url = ""
-        
-        if(image_url):
-            try:
-                if image_url.startswith("http"):  # If it's a URL
-                    response = requests.get(image_url)
-                    if response.status_code == 200:
-                        image_type = imghdr.what(None, response.content) or "jpg"  # Default to jpg if unknown
-                        download_url = f"products/{current_time}_{keyword}/images/{prefix}{section_id}.{image_type}"
-                        
-                        os.makedirs(os.path.dirname(download_url), exist_ok=True)
-                        with open(download_url, 'wb') as file:
-                            file.write(response.content)
 
-                elif image_url.startswith("data:image"):  # If it's a base64 string
-                    match = re.match(r"data:image/(\w+);base64,(.*)", image_url)
-                    if match:
-                        image_type, base64_data = match.groups()
-                        image_type = image_type if image_type else "jpg"  # Default type
-                        
-                        download_url = f"products/{current_time}_{keyword}/images/{prefix}{section_id}.{image_type}"
-                        
-                        os.makedirs(os.path.dirname(download_url), exist_ok=True)
-                        with open(download_url, 'wb') as file:
-                            file.write(base64.b64decode(base64_data))
-                        image_url = "Raw image"
-
-            except Exception as e:
-                print("Error saving image:", e)
         try:
-            title_element = element.find_element(By.CLASS_NAME, "gkQHve")
+            title_element = element.find_element(By.CLASS_NAME, "tAxDx")
             title = title_element.text.strip()
         except:
             title = ""
-        
-        try:
-            product_link_element = driver.find_element(By.CLASS_NAME, "P9159d")
-            product_link = product_link_element.get_dom_attribute("href")
-        except:
-            product_link = ""
 
         try:
             store_element = element.find_element(By.CLASS_NAME, "Z9qvte")
@@ -188,6 +175,7 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
         price_float = clean_price(price)
         score = (clean_rating(rating) * 2) + (rating_count / 100) - (price_float / 10)
 
+        # Create database record
         db_record = (
             "https://google.com",
             product_link,
@@ -202,10 +190,39 @@ def get_products(driver, keyword, db_name, table_name, current_time, prefix, ite
             score
         )
 
+        # Create Excel record
+        excel_record = [
+            str(section_id),
+            "https://google.com",
+            product_link,
+            "Google",
+            store,
+            "",
+            title,
+            "",
+            price,
+            download_url,
+            image_url,
+            "",
+            "",
+            rating,
+            rating_count
+        ]
+
+        # Write to Excel
+        for col_index, value in enumerate(excel_record):
+            sheet.write(section_id, col_index, value)
+
         insert_product_record(db_name, table_name, db_record)
         products.append(db_record)  # Use the same record structure as the database
         section_id = section_id + 1
         num = num + 1
+
+    # Save Excel file
+    excel_filename = f"products/{current_time}_{prefix}/google_products_{current_time}.xls"
+    os.makedirs(os.path.dirname(excel_filename), exist_ok=True)
+    workbook.save(excel_filename)
+    st.success(f"Excel file saved as: {excel_filename}")
 
     driver.quit()
     return products
