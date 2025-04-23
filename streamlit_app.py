@@ -627,10 +627,7 @@ def display_product_card(product, db_name, is_saved_item=False):
         
         # Display product details
         st.markdown(f"### {product[5]}")  # product_name
-        
-        # Display price - product[6] contains the price
-        st.markdown(f"**Price:** ${product[6]}")
-            
+        st.markdown(f"**Price:** ${product[6]}")  # price
         st.markdown(f"**Store:** {product[4]}")  # store
         
         if product[9]:  # product_rating
@@ -656,6 +653,55 @@ def display_product_card(product, db_name, is_saved_item=False):
                 compare_on_walmart(product[5], db_name, table_name, current_time)
         with col5:
             match_button = st.button("Match Images", key=f"match_{product[0]}")
+        
+        # Handle image matching outside the column structure
+        if match_button:
+            if image_path and os.path.exists(image_path):
+                with st.spinner("Matching image with Google Lens..."):
+                    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    matched_images = match_image_with_google_lens(image_path, current_time)
+                    if matched_images:
+                        with st.expander("Similar Images Found", expanded=True):
+                            cols = st.columns(4)
+                            col_idx = 0
+                            
+                            for img_url in matched_images:
+                                if not img_url or img_url == "data:,":
+                                    continue
+                                    
+                                try:
+                                    if img_url.startswith("data:image"):
+                                        try:
+                                            base64_data = img_url.split(',')[1]
+                                            image_data = base64.b64decode(base64_data)
+                                            image = Image.open(io.BytesIO(image_data))
+                                            if max(image.size) > 100:
+                                                ratio = 100 / max(image.size)
+                                                new_size = tuple(int(dim * ratio) for dim in image.size)
+                                                image = image.resize(new_size, Image.Resampling.LANCZOS)
+                                            cols[col_idx].image(image, use_container_width=True)
+                                            col_idx = (col_idx + 1) % 4
+                                        except:
+                                            continue
+                                    else:
+                                        try:
+                                            response = requests.get(img_url, timeout=5)
+                                            if response.status_code == 200:
+                                                image = Image.open(io.BytesIO(response.content))
+                                                if max(image.size) > 100:
+                                                    ratio = 100 / max(image.size)
+                                                    new_size = tuple(int(dim * ratio) for dim in image.size)
+                                                    image = image.resize(new_size, Image.Resampling.LANCZOS)
+                                                cols[col_idx].image(image, use_container_width=True)
+                                                col_idx = (col_idx + 1) % 4
+                                        except:
+                                            continue
+                                except Exception as e:
+                                    continue
+                    else:
+                        st.warning("No similar images found.")
+            else:
+                st.error("No image available for matching.")
     
     st.markdown("---")  # Add a separator between products
 
