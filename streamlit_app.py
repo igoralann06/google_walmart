@@ -31,6 +31,7 @@ from sabor_tropical import get_sabor_tropical_products
 from sams import get_sams_products
 from target import get_target_products
 from google_shopping_api import get_products as get_google_products
+import mysql.connector
 
 # Available stores
 AVAILABLE_STORES = [
@@ -275,13 +276,27 @@ def insert_product_record(db_name, table_name, record):
     conn.close()
 
 def get_table_names(db_name):
-    conn = sqlite3.connect(db_name)
+    # conn = sqlite3.connect(db_name)
+    # cursor = conn.cursor()
+    # cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    # tables = cursor.fetchall()
+    # conn.close()
+    # # Return table names in reverse order (newest first)
+    # return sorted([table[0] for table in tables], reverse=True)
+
+    conn = mysql.connector.connect(
+        host='127.0.0.1',
+        user='root',
+        password='',
+        database='search_items'
+    )
     cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
+    cursor.execute("SHOW TABLES;")
+    tables = [row[0] for row in cursor.fetchall()]
+    print(tables)
+    cursor.close()
     conn.close()
-    # Return table names in reverse order (newest first)
-    return sorted([table[0] for table in tables], reverse=True)
+    return tables
 
 def get_products_from_table(db_name, table_name, page=1, per_page=12):
     conn = sqlite3.connect(db_name)

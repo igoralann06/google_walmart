@@ -9,3 +9,4 @@ xlwt==1.3.0
 fake_useragent
 webdriver-manager
 python-dotenv
+mysql-connector-python==8.0.33

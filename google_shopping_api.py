@@ -13,44 +13,96 @@ import base64
 from flask_cors import CORS
 import xlwt
 import streamlit as st
+import mysql.connector
 
 def create_database_table(db_name, table_name):
-    conn = sqlite3.connect(db_name)
+    # conn = sqlite3.connect(db_name)
+    # cursor = conn.cursor()
+
+    # print(table_name)
+
+    # create_table_query = f"""
+    # CREATE TABLE IF NOT EXISTS {table_name} (
+    #     id INTEGER PRIMARY KEY,
+    #     store_page_link TEXT,
+    #     product_item_page_link TEXT,
+    #     platform TEXT,
+    #     store TEXT,
+    #     product_name TEXT,
+    #     price TEXT,
+    #     image_file_name TEXT,
+    #     image_link TEXT,
+    #     product_rating TEXT,
+    #     product_review_number TEXT,
+    #     score TEXT
+    # );
+    # """
+    # cursor.execute(create_table_query)
+    # conn.commit()
+    # conn.close()
+
+    conn = mysql.connector.connect(
+        host='127.0.0.1',
+        user='root',
+        password='',
+        database='search_items'
+    )
     cursor = conn.cursor()
 
     print(table_name)
 
     create_table_query = f"""
     CREATE TABLE IF NOT EXISTS {table_name} (
-        id INTEGER PRIMARY KEY,
-        store_page_link TEXT,
-        product_item_page_link TEXT,
-        platform TEXT,
-        store TEXT,
-        product_name TEXT,
-        price TEXT,
-        image_file_name TEXT,
-        image_link TEXT,
-        product_rating TEXT,
-        product_review_number TEXT,
-        score TEXT
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        store_page_link VARCHAR(2048),
+        product_item_page_link VARCHAR(2048),
+        platform VARCHAR(255),
+        store VARCHAR(255),
+        product_name VARCHAR(512),
+        price VARCHAR(64),
+        image_file_name VARCHAR(255),
+        image_link VARCHAR(2048),
+        product_rating VARCHAR(64),
+        product_review_number VARCHAR(64),
+        score VARCHAR(64)
     );
     """
+
     cursor.execute(create_table_query)
     conn.commit()
+    cursor.close()
     conn.close()
 
 def insert_product_record(db_name, table_name, record):
-    conn = sqlite3.connect(db_name)
+    # conn = sqlite3.connect(db_name)
+    # cursor = conn.cursor()
+    
+    # insert_query = f"""
+    # INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
+    # VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    # """
+    
+    # cursor.execute(insert_query, record)
+    # conn.commit()
+    # conn.close()
+
+    conn = mysql.connector.connect(
+        host='127.0.0.1',
+        user='root',
+        password='',
+        database='search_items'
+    )
     cursor = conn.cursor()
-    
+
     insert_query = f"""
-    INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO {table_name} 
+    (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
-    
+
     cursor.execute(insert_query, record)
     conn.commit()
+    cursor.close()
     conn.close()
 
 def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10):

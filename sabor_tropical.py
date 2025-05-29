@@ -21,6 +21,7 @@ import sys
 
 sys.path.append("../..")
 from google_shopping_api import get_products, create_database_table
+import mysql.connector
 
 base_url = "https://www.samsclub.com"
 section_id = 1
@@ -108,16 +109,23 @@ def scroll_to_bottom_multiple_times(driver, scroll_pause_time=2, max_scrolls=10)
         scroll_count += 1
 
 def insert_product_record(db_name, table_name, record):
-    conn = sqlite3.connect(db_name)
+    conn = mysql.connector.connect(
+        host='127.0.0.1',
+        user='root',
+        password='',
+        database='search_items'
+    )
     cursor = conn.cursor()
-    
+
     insert_query = f"""
-    INSERT INTO {table_name} (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO {table_name} 
+    (store_page_link, product_item_page_link, platform, store, product_name, price, image_file_name, image_link, product_rating, product_review_number, score)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
-    
+
     cursor.execute(insert_query, record)
     conn.commit()
+    cursor.close()
     conn.close()
 
 def get_product_list(driver, db_name, table_name, current_time, prefix):
