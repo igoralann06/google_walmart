@@ -331,30 +331,66 @@ def get_table_names(db_name):
     return tables
 
 def get_products_from_table(db_name, table_name, page=1, per_page=12):
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
+    # conn = sqlite3.connect(db_name)
+    # cursor = conn.cursor()
     
+    # # First check if table exists
+    # cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    # if not cursor.fetchone():
+    #     conn.close()
+    #     return None
+        
+    # # Get total count of records
+    # cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    # total_records = cursor.fetchone()[0]
+    
+    # # Calculate offset
+    # offset = (page - 1) * per_page
+    
+    # # Get paginated results
+    # cursor.execute(f"""
+    #     SELECT * 
+    #     FROM {table_name}
+    #     WHERE price IS NOT NULL AND price != ''
+    #     ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
+    #     LIMIT {per_page} OFFSET {offset}
+    # """)
+    # products = cursor.fetchall()
+    # conn.close()
+    # return products, total_records
+
+    db_config = {
+        'host': '127.0.0.1',
+        'user': 'root',
+        'password': '',
+        'database': 'search_items'
+    }
+
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor()
+
     # First check if table exists
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+    cursor.execute("SHOW TABLES LIKE %s", (table_name,))
     if not cursor.fetchone():
         conn.close()
         return None
-        
+
     # Get total count of records
-    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
     total_records = cursor.fetchone()[0]
-    
+
     # Calculate offset
     offset = (page - 1) * per_page
-    
+
     # Get paginated results
     cursor.execute(f"""
         SELECT * 
-        FROM {table_name}
+        FROM `{table_name}`
         WHERE price IS NOT NULL AND price != ''
-        ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS FLOAT) ASC
-        LIMIT {per_page} OFFSET {offset}
-    """)
+        ORDER BY CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS DECIMAL(10,2)) ASC
+        LIMIT %s OFFSET %s
+    """, (per_page, offset))
+
     products = cursor.fetchall()
     conn.close()
     return products, total_records
